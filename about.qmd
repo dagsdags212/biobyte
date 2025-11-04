@@ -1,0 +1,43 @@
+---
+title: "Jan Samson"
+about:
+  template: trestles
+  image: assets/profile.jpg
+  links:
+    - icon: twitter
+      text: Twitter
+      href: https://x.com/dagsdags13
+    - icon: linkedin
+      text: LinkedIn
+      href: https://www.linkedin.com/in/jan-emmanuel-samson-888906202/
+    - icon: github
+      text: Github
+      href: https://github.com/dagsdags212
+
+---
+
+### About Me
+
+:::{#hero-heading}
+
+Jan is a researcher at De La Salle University - Manila.
+He is a seasoned bioinformatician with over three years of experience in genomic data science and software development.
+
+:::
+
+## Education
+
+University of Philippines Diliman | Quezon City, PH \
+MS Bioinformatics | Aug 2023 - Aug 2026
+
+University of the Philippines Los Banos | Laguna, PH \
+B.S Biology, major in Genetics | Aug 2018 - Aug 2022
+
+## Experience
+
+De La Salle University - Manila | Research Associate | July 2025 - present
+
+CleanNest | Co-owner, Business Analyst | June 2024 - present
+
+Village88 | Software Developer Intern | Dec 2022 - Apr 2023
+

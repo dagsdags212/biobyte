@@ -1,0 +1,39 @@
+---
+title: "Welcome to BioByte!"
+description: "Learn the motivation behind this website"
+author: "Jan Emmanuel Samson"
+date: "2025-11-04"
+categories: [news]
+date-modified: today
+---
+
+::: {.callout-warning}
+This website is a work in progress. Expect the layout and formatting to change without prior notice.
+:::
+
+# Hello there!
+
+I am **Jan**, the sole author of this website.
+I finished my undergraduate degree in Biology and currently doing my masters in Bioinformatics.
+I work as a research associate for a clinical study on diabetic foot ulcers.
+My main role revolves around thermal imaging of wounds of diabetic patients. Later on, I'll be constructing and analyzing the 
+proteomes derived from exudate samples at different stages of healing. Outside of work, I run a small, family-owned business where
+I wear many hats as co-owner, software developer, and business analyst. In my free time, I like to watch movies and read books.
+I have a keen liking towards games and programming.
+
+BioByte is a blogging website focusing on topics in **computational biology**, **bioinformatics**, **data science**, and **programming**.
+It is intended to be my personal notebook for learning new topics and concepts in previously mentioned fields.
+As much as possible, I try to make each blog independent from all others. 
+Written proses will be related with one another through links when appropriate.
+
+I will be covering topics in:
+
+- Genomics and Proteomics
+- Computational Biology
+- AI and Machine Learning
+- Computer Vision
+- Data Science
+- any many other (hopefully related) topics!
+
+Feel free to reach out thru my email at [jegsamson.dev@gmail.com](mailto:jegsamson.dev@gmail.com). 
+You can also find my personal GitHub account [here](https://github.com/dagsdags212).
