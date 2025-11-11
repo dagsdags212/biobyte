@@ -427,7 +427,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <section id="genome-decomposition-and-k-mer-counting" class="level2">
 <h2 class="anchored" data-anchor-id="genome-decomposition-and-k-mer-counting">Genome Decomposition and K-mer Counting</h2>
 <p>In this step, we break down the genome sequence into its substrings of length <em>k</em> while keeping count of each unique substring. The <code>bionumpy</code> library provides the functionality for loading FASTA files and computng <em>k</em>-mer frequencies.</p>
-<div id="d2c70ec0" class="cell" data-execution_count="3">
+<div id="b2a2f5df" class="cell" data-execution_count="3">
 <div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> bionumpy <span class="im">as</span> bnp</span>
 <span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># Load genome into memory</span></span>
@@ -455,28 +455,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h2 class="anchored" data-anchor-id="visualization">Visualization</h2>
 <p>We can inspect the distribution of <em>k</em>-mers by plotting their counts as a histogram.</p>
 <div id="cell-fig-kmer-histogram" class="cell" data-execution_count="4">
-<div id="fig-kmer-histogram" class="cell-output cell-output-display quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="245">
+<div id="fig-kmer-histogram" class="cell-output cell-output-display quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="4">
 <figure class="quarto-float quarto-float-fig figure">
 <div aria-describedby="fig-kmer-histogram-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
 
 <style>
-  #altair-viz-e50350f7b87b4aeab3800424e1082798.vega-embed {
+  #altair-viz-a8526e9d872a415382aa3282968a2fa7.vega-embed {
     width: 100%;
     display: flex;
   }
 
-  #altair-viz-e50350f7b87b4aeab3800424e1082798.vega-embed details,
-  #altair-viz-e50350f7b87b4aeab3800424e1082798.vega-embed details summary {
+  #altair-viz-a8526e9d872a415382aa3282968a2fa7.vega-embed details,
+  #altair-viz-a8526e9d872a415382aa3282968a2fa7.vega-embed details summary {
     position: relative;
   }
 </style>
-<div id="altair-viz-e50350f7b87b4aeab3800424e1082798"></div>
+<div id="altair-viz-a8526e9d872a415382aa3282968a2fa7"></div>
 <script type="text/javascript">
   var VEGA_DEBUG = (typeof VEGA_DEBUG == "undefined") ? {} : VEGA_DEBUG;
   (function(spec, embedOpt){
     let outputDiv = document.currentScript.previousElementSibling;
-    if (outputDiv.id !== "altair-viz-e50350f7b87b4aeab3800424e1082798") {
-      outputDiv = document.getElementById("altair-viz-e50350f7b87b4aeab3800424e1082798");
+    if (outputDiv.id !== "altair-viz-a8526e9d872a415382aa3282968a2fa7") {
+      outputDiv = document.getElementById("altair-viz-a8526e9d872a415382aa3282968a2fa7");
     }
 
     const paths = {
@@ -688,7 +688,7 @@ Figure&nbsp;3: Distance matrix of three Influenza genomes
     }
       var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
       var mailtoRegex = new RegExp(/^mailto:/);
-        var filterRegex = new RegExp('/' + window.location.host + '/');
+        var filterRegex = new RegExp("\/");
       var isInternal = (href) => {
           return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
       }
