@@ -4,7 +4,6 @@ project:
 
 website:
   title: "biobyte"
-  site-url: /
   navbar:
     right:
       - about.qmd

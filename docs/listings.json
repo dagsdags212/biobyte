@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/gc-skew/index.html",
       "/posts/kmer-analysis/index.html",
       "/posts/welcome/index.html"
     ]
