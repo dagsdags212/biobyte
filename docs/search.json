@@ -1,0 +1,72 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "BioByte",
+    "section": "",
+    "text": "Alignment-free Genome Comparisons\n\n\n\ngenomics\n\nbioinformatics\n\n\n\nAssess sequence similarity between genomes using k-mer composition\n\n\n\n\n\nNov 11, 2025\n\n\n\n\n\n\n\n\n\n\n\n\nWelcome to BioByte!\n\n\n\nnews\n\n\n\nLearn the motivation behind this website\n\n\n\n\n\nNov 4, 2025\n\n\nJan Emmanuel Samson\n\n\n\n\n\nNo matching items"
+  },
+  {
+    "objectID": "posts/welcome/index.html",
+    "href": "posts/welcome/index.html",
+    "title": "Welcome to BioByte!",
+    "section": "",
+    "text": "Warning\n\n\n\nThis website is a work in progress. Expect the layout and formatting to change without prior notice.\n\n\n\nHello there!\nI am Jan, the sole author of this website. I finished my undergraduate degree in Biology and currently doing my masters in Bioinformatics. I work as a research associate for a clinical study on diabetic foot ulcers. My main role revolves around thermal imaging of wounds of diabetic patients. Later on, I’ll be constructing and analyzing the proteomes derived from exudate samples at different stages of healing. Outside of work, I run a small, family-owned business where I wear many hats as co-owner, software developer, and business analyst. In my free time, I like to watch movies and read books. I have a keen liking towards games and programming.\nBioByte is a blogging website focusing on topics in computational biology, bioinformatics, data science, and programming. It is intended to be my personal notebook for learning new topics and concepts in previously mentioned fields. As much as possible, I try to make each blog independent from all others. Written proses will be related with one another through links when appropriate.\nI will be covering topics in:\n\nGenomics and Proteomics\nComputational Biology\nAI and Machine Learning\nComputer Vision\nData Science\nany many other (hopefully related) topics!\n\nFeel free to reach out thru my email at jegsamson.dev@gmail.com. You can also find my personal GitHub account here."
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "Jan Samson",
+    "section": "",
+    "text": "Jan is a researcher at De La Salle University - Manila. He is a seasoned bioinformatician with over three years of experience in genomic data science and software development."
+  },
+  {
+    "objectID": "about.html#education",
+    "href": "about.html#education",
+    "title": "Jan Samson",
+    "section": "Education",
+    "text": "Education\nUniversity of Philippines Diliman | Quezon City, PH\nMS Bioinformatics | Aug 2023 - Aug 2026\nUniversity of the Philippines Los Banos | Laguna, PH\nB.S Biology, major in Genetics | Aug 2018 - Aug 2022"
+  },
+  {
+    "objectID": "about.html#experience",
+    "href": "about.html#experience",
+    "title": "Jan Samson",
+    "section": "Experience",
+    "text": "Experience\nDe La Salle University - Manila | Research Associate | July 2025 - present\nCleanNest | Co-owner, Business Analyst | June 2024 - present\nVillage88 | Software Developer Intern | Dec 2022 - Apr 2023"
+  },
+  {
+    "objectID": "posts/kmer-analysis/index.html",
+    "href": "posts/kmer-analysis/index.html",
+    "title": "Alignment-free Genome Comparisons",
+    "section": "",
+    "text": "Many sequence comparison workflows start with alignment, a computationally intensive task that scales quadratically with sequence length. Here, we explore an alignment-free method for comparing multiple genomes using k-mer counts. Put simply, a k-mer is a contiguous substring of a larger sequence with lenght k.\nThe workflow is as follows:"
+  },
+  {
+    "objectID": "posts/kmer-analysis/index.html#data-retrieval",
+    "href": "posts/kmer-analysis/index.html#data-retrieval",
+    "title": "Alignment-free Genome Comparisons",
+    "section": "Data Retrieval",
+    "text": "Data Retrieval\nThree influenza strains and their corresponding genomes accessions are given below:\n\n\n\nStrain\nAccession\n\n\n\n\nInfluenza A\nGCA_000865725\n\n\nInfluenza B\nGCA_000820495\n\n\nInfluenza C\nGCA_000856665\n\n\n\nSave the metadata as a CSV file in the path data/subtypes.csv. The datasets utility can be used to easily download the genomes in FASTA format. The csvtk command just extracts the accession column from the metadata.\n1datasets download genome accession \\\n    --inputfile &lt;(csvtk cut -Uf accession data/substypes.csv) \\\n    --include genome \\\n    --filename data/genomes.zip\n\n2unzip data/genomes.zip -d data\n\n1\n\nDownload genome files in FASTA format\n\n2\n\nUnzip folder and extract the files into the data directory"
+  },
+  {
+    "objectID": "posts/kmer-analysis/index.html#genome-decomposition-and-k-mer-counting",
+    "href": "posts/kmer-analysis/index.html#genome-decomposition-and-k-mer-counting",
+    "title": "Alignment-free Genome Comparisons",
+    "section": "Genome Decomposition and K-mer Counting",
+    "text": "Genome Decomposition and K-mer Counting\nIn this step, we break down the genome sequence into its substrings of length k while keeping count of each unique substring. The bionumpy library provides the functionality for loading FASTA files and computng k-mer frequencies.\n\nimport bionumpy as bnp\n\n# Load genome into memory\ngenome_fp = \"data/ncbi_dataset/data/GCA_000820495.2/GCA_000820495.2_ViralMultiSegProj14656_genomic.fna\"\nrecord = bnp.open(genome_fp).read()\n\n# Set k-mer size and alphabet\nk = 3\nalphabet = \"ACGT\"\n\n# Compute complete k-mer set and initialize to zero\nfrequencies = {\n    \"\".join(kmer): 0 \n    for kmer in itertools.combinations_with_replacement(alphabet, k)\n}\n\n# Decompose into k-mers and compute frequencies\nkmers = bnp.sequence.get_kmers(record.sequence, k)\ncounts = bnp.count_encoded(kmers, axis=None)\nfor kmer, count in zip(counts.alphabet, counts.counts):\n    frequencies[kmer] = count"
+  },
+  {
+    "objectID": "posts/kmer-analysis/index.html#visualization",
+    "href": "posts/kmer-analysis/index.html#visualization",
+    "title": "Alignment-free Genome Comparisons",
+    "section": "Visualization",
+    "text": "Visualization\nWe can inspect the distribution of k-mers by plotting their counts as a histogram.\n\n\n\n\n\n\n\n\n\n\nFigure 1: Distribution of 3-mers of the Influenza genome\n\n\n\n\nFrom Figure 1, we can observe that k-mers such as CCG, CGC, CGT, GCG, and TCG have low counts while AAA and GAA have high frequencies. Does this hint that the Influenza genome is AT rich?\nAnother way to visualize k-mer counts is thru a heatmap. To do this, we first reshape the counts array into a square matrix, then convert the frequencies to log-scale with pseudocounts.\n\n\n\n\n\n\n\n\nFigure 2: 3-mer heatmap of the Influenza genome"
+  },
+  {
+    "objectID": "posts/kmer-analysis/index.html#measuring-distance",
+    "href": "posts/kmer-analysis/index.html#measuring-distance",
+    "title": "Alignment-free Genome Comparisons",
+    "section": "Measuring Distance",
+    "text": "Measuring Distance\nThe k-mer frequencies are represented as 4k-dimensional vectors. We can estimate the similarity of two genomes by computing a distance metric using their k-mer vectors. To remove the influence of genome size to the computed distance, we first normalize the elements then compute the L2 distance, also known as the Euclidean distance. I’ve packaged our previously implemented functions into a convenience class called KmerSet.\n\nfrom scipy.spatial import distance\n\ndef extract_kmer_counts(ks: KmerSet):\n    \"\"\"Flatten k-mer counts into a row vector\"\"\"\n    return np.array(list(ks.counts().values()))\n\ndef kmer_distance(ks1: KmerSet, ks2: KmerSet, metric: str = \"euclidean\"):\n    \"\"\"Compute the distance between two vectors containing k-mer counts\"\"\"\n    counts1 = extract_kmer_counts(ks1)\n    counts2 = extract_kmer_counts(ks2)\n\n    # Normalize k-mer counts to remove genome size influence\n    counts1 = counts1 / np.sum(counts1)\n    counts2 = counts2 / np.sum(counts2)\n\n    dist = None\n    match metric:\n        case \"euclidean\":\n            dist = distance.euclidean(counts1, counts2)\n        case \"cosine\":\n            dist = distance.cosine(counts1, counts2)\n        case \"manhattan\":\n            dist = distance.cityblock(counts1, counts2)\n        case _:\n            dist = distance.euclidean(counts1, counts2)\n\n    return dist\n\nComputing the distances between pairwise comparisons of three Influenza genomes, we get the matrix in Figure 3.\n\n\n\n\n\n\n\n\nFigure 3: Distance matrix of three Influenza genomes\n\n\n\n\n\nThe low distance values show the relatedness of the three genomes. This makes sense as all genomes are derived from the Influenza virus. However, we are still able to detect subtle differences between genomes by virtue of their k-mer compositions. Using the distances, we can conclude that Influenza A (GCA_000865725) has a genome that is more akin to Influenza C (GCA_000856665)."
+  }
+]
