@@ -1,1 +1,7 @@
+Makefile
+_site
 
+/.quarto/
+/_extensions/
+/_freeze/
+uv.lock
