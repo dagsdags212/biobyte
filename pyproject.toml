@@ -1,0 +1,21 @@
+[project]
+name = "biobyte"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "altair>=5.5.0",
+    "bionumpy>=1.0.14",
+    "ipykernel>=7.1.0",
+    "ipython>=9.7.0",
+    "ipywidgets>=8.1.8",
+    "jupyter>=1.1.1",
+    "jupyterlab>=4.4.10",
+    "matplotlib>=3.10.7",
+    "numpy>=2.3.4",
+    "pandas>=2.3.3",
+    "polars>=1.35.2",
+    "scipy>=1.16.3",
+    "seaborn>=0.13.2",
+]
