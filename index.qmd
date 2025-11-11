@@ -1,12 +1,12 @@
 ---
 title: "BioByte"
 listing:
-  contents: posts
+  contents: posts/**/index.qmd
   feed: true
   sort: "date desc"
   type: default
   categories: true
-  sort-ui: false
+  sort-ui: true
   filter-ui: false
 page-layout: full
 title-block-banner: false
