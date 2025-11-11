@@ -1,0 +1,314 @@
+---
+title: "Alignment-free Genome Comparisons"
+date: today
+description: Assess sequence similarity between genomes using _k_-mer composition
+categories: [genomics, bioinformatics]
+date-modified: today
+jupyter: python3
+execute:
+    warning: false
+    message: false
+---
+
+```{python}
+#| echo: false
+#| label: setup
+from pathlib import Path
+import re
+import itertools
+
+import numpy as np
+import polars as pl
+import matplotlib.pyplot as plt
+import seaborn as sns
+import altair as alt
+import bionumpy as bnp
+import ipywidgets as widgets
+from IPython.display import display
+
+def genomes():
+    """Gather filepaths for three Influenza genomes"""
+    data_dir = Path("data/ncbi_dataset/data") 
+    genome_filepaths = {}
+    for fna in data_dir.glob("**/*.fna"):
+        acc = re.match("GCA_\d{9}\.\d", fna.stem).group(0)
+        genome_filepaths[acc] = fna
+    return genome_filepaths
+
+genome_fps = genomes()
+```
+
+```{python}
+#| echo: false
+
+class KmerSet(object):
+    def __init__(self, fp: Path, k: int = 3) -> None:
+        self.k = k
+        self._genome = self._load_genome(fp)
+
+    def __str__(self) -> str:
+        return f"KmerSet(k={self.k})"
+
+    def __repr__(self) -> str:
+        return f"KmerSet(k={self.k})"
+
+    @property
+    def genome(self):
+        return self._genome
+
+    def _load_genome(self, fp):
+        if not Path(fp).exists():
+            raise FileNotFoundError("Genome file does not exist") 
+        return bnp.open(fp).read()
+
+    def combinations(self, alphabet = "ACGT"):
+        """Build all combinations of kmer set"""
+        return ["".join(c) for c in itertools.combinations_with_replacement(alphabet, self.k)]
+
+    def counts(self, to_df: bool = False):
+        """Split sequences into substrings of length k and count frequencies"""
+        kmers = bnp.sequence.get_kmers(self.genome.sequence, self.k)
+        counts = {kmer: 0 for kmer in self.combinations()}
+
+        kmer_counts = bnp.count_encoded(kmers, axis=None)
+        for kmer, count in zip(kmer_counts.alphabet, kmer_counts.counts):
+            counts[kmer] = count
+
+        if to_df:
+            counts = pl.DataFrame(dict(kmer=counts.keys(), count=counts.values()))
+
+        return counts
+
+    def matrix(self):
+        """Convert counts and labels arrays into a square matrix"""
+        kmer_counts = self.counts()
+        kmers = sorted(kmer_counts)
+        values = np.array([kmer_counts[k] for k in kmers])
+
+        # Determine nearest square size
+        n = int(np.ceil(np.sqrt(len(values))))
+
+        # Pad if not perfect square
+        padded_values = np.zeros(n*n)
+        padded_values[:len(values)] = values
+        counts = padded_values.reshape(n, n)
+
+        padded_labels = [""] * (n*n)
+        padded_labels[:len(values)] = kmers
+        labels = np.array(padded_labels).reshape(n, n)
+
+        return counts, labels
+
+    def plot_heatmap(self, label: str | None = None, cmap="mako") -> None:
+        """Display heatmap of k-mer frequencies"""
+        counts, labels = self.matrix()
+        plt.figure(figsize=(8, 8))
+        ax = sns.heatmap(
+            np.log1p(counts),
+            cmap=cmap,
+            square=True,
+            annot=(labels if self.k <= 4 else None),
+            fmt="",
+            cbar=True,
+            cbar_kws=dict(
+                orientation="vertical",
+                label="log(1+count)",
+                shrink=0.8,
+                aspect=30,
+                # pad=0.1,
+            ),
+            annot_kws=dict(size=12-self.k)
+        )
+
+        if label:
+            ax.set_title(label, fontsize=14, pad=15)
+
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+        plt.tight_layout()
+        # plt.show()
+
+        return ax
+
+    def plot_spectra(self, color: str = "lightblue") -> None:
+        data = self.counts(to_df=True)
+        base = alt.Chart(data).encode(
+            alt.X("kmer:O")
+                .title("")
+                .axis(ticks=False, grid=False), 
+            alt.Y("count:Q")
+                .title("Frequency")
+                .axis(labelAngle=-90, ticks=False, grid=False),
+            alt.Tooltip(["kmer", "count"])
+        )
+        bar = base.mark_bar(width=3, cornerRadius=10)
+        point = base.mark_point()
+        return bar + point
+```
+
+Many sequence comparison workflows start with **alignment**, a computationally intensive task that scales quadratically
+with sequence length. Here, we explore an alignment-free method for comparing multiple genomes using _k_-mer counts. 
+Put simply, a _k_-mer is a contiguous substring of a larger sequence with lenght _k_.
+
+The workflow is as follows:
+
+1. **Data retrieval**: download the genomes in FASTA format
+2. **Genome decomposition and _k_-mer counting**: split the genome into its component _k_-mers, keep track of the frequency for each unique _k_-mer
+3. **Visualization**: plot the _k_-mer spectra
+4. **Measure distance**: compute the L2 distance between _k_-mer counts
+
+## Data Retrieval
+
+Three influenza strains and their corresponding genomes accessions are given below:
+
+|Strain|Accession|
+|---|---|
+|Influenza A|GCA_000865725|
+|Influenza B|GCA_000820495|
+|Influenza C|GCA_000856665|
+
+Save the metadata as a CSV file in the path `data/subtypes.csv`. 
+The `datasets` utility can be used to easily download the genomes in FASTA format.
+The `csvtk` command just extracts the _accession_ column from the metadata.
+
+```bash
+datasets download genome accession \                             # <1>
+    --inputfile <(csvtk cut -Uf accession data/substypes.csv) \  # <1>
+    --include genome \                                           # <1>
+    --filename data/genomes.zip                                  # <1>
+
+unzip data/genomes.zip -d data                                   # <2>
+```
+1. Download genome files in FASTA format
+2. Unzip folder and extract the files into the `data` directory
+
+## Genome Decomposition and K-mer Counting
+
+In this step, we break down the genome sequence into its substrings of length _k_ while keeping count of each unique substring. 
+The `bionumpy` library provides the functionality for loading FASTA files and computng _k_-mer frequencies.
+
+
+```{python}
+import bionumpy as bnp
+
+# Load genome into memory
+genome_fp = "data/ncbi_dataset/data/GCA_000820495.2/GCA_000820495.2_ViralMultiSegProj14656_genomic.fna"
+record = bnp.open(genome_fp).read()
+
+# Set k-mer size and alphabet
+k = 3
+alphabet = "ACGT"
+
+# Compute complete k-mer set and initialize to zero
+frequencies = {
+    "".join(kmer): 0 
+    for kmer in itertools.combinations_with_replacement(alphabet, k)
+}
+
+# Decompose into k-mers and compute frequencies
+kmers = bnp.sequence.get_kmers(record.sequence, k)
+counts = bnp.count_encoded(kmers, axis=None)
+for kmer, count in zip(counts.alphabet, counts.counts):
+    frequencies[kmer] = count
+```
+
+## Visualization
+
+We can inspect the distribution of _k_-mers by plotting their counts as a histogram.
+
+```{python}
+#| echo: false
+#| label: fig-kmer-histogram
+#| fig-cap: Distribution of 3-mers of the Influenza genome
+_df = pl.DataFrame({"kmer": frequencies.keys(), "count": frequencies.values()})
+_spectrum = alt.Chart(_df).mark_bar().encode(
+    alt.X("kmer:N", title="", axis=alt.Axis(labelAngle=-90)),
+    alt.Y("count:Q", title="Frequency"),
+    alt.Tooltip(["kmer", "count"])
+)
+
+_spectrum
+```
+
+From @fig-kmer-histogram, we can observe that _k_-mers such as _CCG_, _CGC_, _CGT_, _GCG_, and _TCG_ have low counts
+while _AAA_ and _GAA_ have high frequencies. Does this hint that the Influenza genome is AT rich?
+
+Another way to visualize _k_-mer counts is thru a heatmap. To do this, we first reshape the counts array into a square matrix,
+then convert the frequencies to log-scale with pseudocounts. 
+
+```{python}
+#| echo: false
+#| label: fig-kmer-heatmap
+#| fig-cap: 3-mer heatmap of the Influenza genome
+ks1 = KmerSet(genome_fp)
+ks1.plot_heatmap(cmap="crest")
+```
+
+## Measuring Distance
+
+The k-mer frequencies are represented as 4^k^-dimensional vectors. 
+We can estimate the similarity of two genomes by computing a distance metric using their _k_-mer vectors. 
+To remove the influence of genome size to the computed distance, we first normalize the elements then compute the L2 distance, 
+also known as the Euclidean distance. I've packaged our previously implemented functions into a convenience class called `KmerSet`.
+
+```{python}
+#| label: kmer-distance-function
+from scipy.spatial import distance
+
+def extract_kmer_counts(ks: KmerSet):
+    """Flatten k-mer counts into a row vector"""
+    return np.array(list(ks.counts().values()))
+
+def kmer_distance(ks1: KmerSet, ks2: KmerSet, metric: str = "euclidean"):
+    """Compute the distance between two vectors containing k-mer counts"""
+    counts1 = extract_kmer_counts(ks1)
+    counts2 = extract_kmer_counts(ks2)
+
+    # Normalize k-mer counts to remove genome size influence
+    counts1 = counts1 / np.sum(counts1)
+    counts2 = counts2 / np.sum(counts2)
+
+    dist = None
+    match metric:
+        case "euclidean":
+            dist = distance.euclidean(counts1, counts2)
+        case "cosine":
+            dist = distance.cosine(counts1, counts2)
+        case "manhattan":
+            dist = distance.cityblock(counts1, counts2)
+        case _:
+            dist = distance.euclidean(counts1, counts2)
+
+    return dist
+```
+
+Computing the distances between pairwise comparisons of three Influenza genomes, we get the matrix in @fig-distance-matrix.
+
+```{python}
+#| echo: false
+#| label: fig-distance-matrix
+#| fig-cap: Distance matrix of three Influenza genomes
+ksets = {acc: KmerSet(gfp) for acc, gfp in genome_fps.items()}
+X = np.array(list(map(extract_kmer_counts, ksets.values())), dtype=np.float32)
+X = X / X.sum(axis=1, keepdims=True)
+
+metric = "euclidean"
+distmat = distance.squareform(
+    distance.pdist(X, metric=metric)
+)
+
+plt.figure(figsize=(12, 8))
+hm = sns.heatmap(distmat, annot=True, cmap="crest")
+hm.set_xticklabels(ksets.keys())
+hm.set_yticklabels(ksets.keys(), rotation=90)
+hm
+```
+
+The low distance values show the relatedness of the three genomes. 
+This makes sense as all genomes are derived from the Influenza virus.
+However, we are still able to detect subtle differences between genomes by virtue of their _k_-mer compositions.
+Using the distances, we can conclude that Influenza A (_GCA_000865725_) has a genome that is more akin to Influenza C (_GCA_000856665_).
+
