@@ -7,9 +7,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="dcterms.date" content="2025-11-12">
-<meta name="description" content="Exploring genome properties to elucidate the origin of replication">
+<meta name="description" content="Implementing a few string matching algorithms used in bioinformatics">
 
-<title>Finding ori – biobyte</title>
+<title>Methods for Comparing Strings – biobyte</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -60,7 +60,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </style>
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
 <script src="../../site_libs/quarto-nav/headroom.min.js"></script>
 <script src="../../site_libs/clipboard/clipboard.min.js"></script>
 <script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
@@ -109,9 +109,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
-
-<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
 
   <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
@@ -345,14 +342,15 @@ window.Quarto = {
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-body">
-      <h1 class="title">Finding <em>ori</em></h1>
+      <h1 class="title">Methods for Comparing Strings</h1>
                   <div>
         <div class="description">
-          Exploring genome properties to elucidate the origin of replication
+          Implementing a few string matching algorithms used in bioinformatics
         </div>
       </div>
                           <div class="quarto-categories">
-                <div class="quarto-category">genomics</div>
+                <div class="quarto-category">algorithms</div>
+                <div class="quarto-category">computer-science</div>
                 <div class="quarto-category">bioinformatics</div>
               </div>
                   </div>
@@ -387,66 +385,78 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#the-origin-of-replication" id="toc-the-origin-of-replication" class="nav-link active" data-scroll-target="#the-origin-of-replication">The Origin of Replication</a></li>
-  <li><a href="#genome-dataset" id="toc-genome-dataset" class="nav-link" data-scroll-target="#genome-dataset">Genome Dataset</a></li>
-  <li><a href="#expected-k-mer-distribution" id="toc-expected-k-mer-distribution" class="nav-link" data-scroll-target="#expected-k-mer-distribution">Expected K-mer Distribution</a></li>
-  <li><a href="#frequent-words" id="toc-frequent-words" class="nav-link" data-scroll-target="#frequent-words">Frequent Words</a></li>
-  <li><a href="#asymmetry-of-replication" id="toc-asymmetry-of-replication" class="nav-link" data-scroll-target="#asymmetry-of-replication">Asymmetry of Replication</a></li>
+  <li><a href="#the-string-matching-problem" id="toc-the-string-matching-problem" class="nav-link active" data-scroll-target="#the-string-matching-problem">The String Matching Problem</a></li>
+  <li><a href="#naive-exact-matching" id="toc-naive-exact-matching" class="nav-link" data-scroll-target="#naive-exact-matching">Naive Exact Matching</a></li>
+  <li><a href="#boyer-moore-algorithm" id="toc-boyer-moore-algorithm" class="nav-link" data-scroll-target="#boyer-moore-algorithm">Boyer-Moore Algorithm</a>
+  <ul class="collapse">
+  <li><a href="#bad-character-rule" id="toc-bad-character-rule" class="nav-link" data-scroll-target="#bad-character-rule">Bad Character Rule</a></li>
+  <li><a href="#good-suffix-rule" id="toc-good-suffix-rule" class="nav-link" data-scroll-target="#good-suffix-rule">Good Suffix Rule</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
 <!-- main -->
-<main class="content quarto-banner-title-block page-columns page-full" id="quarto-document-content">
+<main class="content quarto-banner-title-block" id="quarto-document-content">
 
 
 
 
 
 
-<section id="the-origin-of-replication" class="level2">
-<h2 class="anchored" data-anchor-id="the-origin-of-replication">The Origin of Replication</h2>
-<p>The <strong>origin of replication</strong> (<em>ori</em>) is a specific DNA sequence at which DNA replication begins. It is the genomic region where the cellular machinery assembles and starts to synthesize new DNA strands. Due to its importance, there are experimental methods to elucidate the position of the ori-site, although this process takes time, effort, and expertise.</p>
-<p>In recent years, 2nd- and 3rd-generation sequencing platforms have drastically reduced the time and cost to assemble draft genomes. Short sequencing reads allows for good genome depth while long reads reduce the uncertainty when building contigs from shorter sequences by increasing coverage. As a computational biologist, I would want to leverage this fact by finding ways to amortize the vast amounts of genomes published online.</p>
-<p>Going back to the problem of <em>ori</em> finding, can we build heuristics for finding this region using only the genome sequence as input? We will dive into the ideas from Compeau’s and Pevzner’s book entitled <em>Bioinformatics Algorithms: An Active Learing Approach</em> and implement the algorithms in code.</p>
+<section id="the-string-matching-problem" class="level2">
+<h2 class="anchored" data-anchor-id="the-string-matching-problem">The String Matching Problem</h2>
+<p>The string matching problem, also called <strong>pattern matching</strong>, is a fundamental probelem in computer science and bioinformatics. It involves finding one or more occurrences of a pattern string <em>P</em> within a text or query string <em>T</em>. We denote the length of a given string <em>s</em> as <span class="math inline">\(|s|\)</span>.</p>
+<p>Formally, the goal is to find all positions <em>i</em> in <em>T</em> such that:</p>
+<p><span class="math display">\[ T[i..i+m-1] = P \]</span></p>
+<p>The problem underlies many practical applications, such as:</p>
+<ul>
+<li>Searching for DNA motifs or protein sequences in bioinformatics</li>
+<li>Text searching in word processors or search engines</li>
+<li>Plagiarism detection and data mining</li>
+</ul>
+<p>Below, I will present a few algorithms to solve the pattern matching problem.</p>
 </section>
-<section id="genome-dataset" class="level2">
-<h2 class="anchored" data-anchor-id="genome-dataset">Genome Dataset</h2>
-<p>The goal is to develop heuristics that can be used to find the <em>ori</em> of bacterial genomes from sequence data alone. I will be using the <em>Vibrio cholera</em> genome as an example. First, let’s explore the properties of the genome by loading it into memory and computing a few properties such as length, base composition, and GC content.</p>
-<div id="load-genome" class="cell" data-execution_count="2">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load genome</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>genome_fp <span class="op">=</span> <span class="st">"data/Vibrio_cholerae.txt"</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> <span class="bu">open</span>(genome_fp, <span class="st">"r"</span>) <span class="im">as</span> fh:</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    genome <span class="op">=</span> fh.read()</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute length</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>genome_length <span class="op">=</span> <span class="bu">len</span>(genome)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute base frequencies</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>base_freqs <span class="op">=</span> {base: genome.count(base) <span class="cf">for</span> base <span class="kw">in</span> <span class="bu">set</span>(genome)}</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute GC content</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>gc_content <span class="op">=</span> <span class="bu">round</span>((base_freqs[<span class="st">'G'</span>] <span class="op">+</span> base_freqs[<span class="st">'C'</span>]) <span class="op">/</span> genome_length, <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<section id="naive-exact-matching" class="level2">
+<h2 class="anchored" data-anchor-id="naive-exact-matching">Naive Exact Matching</h2>
+<p>The simplest, most straighforward solution is to simply align the start of pattern string <em>P</em> to the start of query string <em>T</em> and compare the characters of both strings index-wise. Once a mismatch occurs, we terminate the comparison since we already know that the two strings do not exactly match. After, we shift string <em>P</em> one character to the right and repeat the comparison. We do this until we reach the <span class="math inline">\(|T| - |P| + 1\)</span> position where the last character of each string aligns. We illustrate this by finding the pattern <span class="light-content" style="color: brown;"><em>brown</em></span> within the text <span class="light-content" style="color: #517699;"><em>The quick brown fox</em></span>:</p>
+<pre><code>The quick brown fox
+brown brown
+ brown brown
+  brown brown
+   brown brown
+    brown brown</code></pre>
+<p>We find that there is a match between the pattern and the text at the 10<sup>th</sup> position. We can write a function that implements this comparison.</p>
+<div id="naive-exact-match" class="cell" data-execution_count="1">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> naive_exact_match(p: <span class="bu">str</span>, t: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="bu">list</span>[<span class="bu">int</span>]:</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Finds the starting positions where pattern (p) matches text (t)"""</span></span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>    occurrences <span class="op">=</span> []</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="bu">len</span>(t) <span class="op">-</span> <span class="bu">len</span>(p) <span class="op">+</span> <span class="dv">1</span>):</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a>        match <span class="op">=</span> <span class="va">True</span></span>
+<span id="cb2-6"><a href="#cb2-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> j <span class="kw">in</span> <span class="bu">range</span>(<span class="bu">len</span>(p)):</span>
+<span id="cb2-7"><a href="#cb2-7" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> t[i<span class="op">+</span>j] <span class="op">!=</span> p[j]:</span>
+<span id="cb2-8"><a href="#cb2-8" aria-hidden="true" tabindex="-1"></a>                match <span class="op">=</span> <span class="va">False</span></span>
+<span id="cb2-9"><a href="#cb2-9" aria-hidden="true" tabindex="-1"></a>                <span class="cf">break</span></span>
+<span id="cb2-10"><a href="#cb2-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> match:</span>
+<span id="cb2-11"><a href="#cb2-11" aria-hidden="true" tabindex="-1"></a>            occurrences.append(i)</span>
+<span id="cb2-12"><a href="#cb2-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> occurrences</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="load-genome-display" class="cell" data-execution_count="3">
-<div class="cell-output cell-output-stdout">
-<pre><code>Genome length: 1108250
-Base counts: {'T': 294711, 'G': 256024, 'C': 263573, 'A': 293942}
-GC content: 47.00%</code></pre>
+<p>Passing in our query and text in the previous example, we get the following result:</p>
+<div id="cell-naive-exact-match-example" class="cell" data-execution_count="2">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>p <span class="op">=</span> <span class="st">"brown"</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>t <span class="op">=</span> <span class="st">"The quick brown fox"</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>naive_exact_match(p, t)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="naive-exact-match-example" class="cell-output cell-output-display" data-execution_count="53">
+<pre><code>[10]</code></pre>
 </div>
 </div>
 </section>
-<section id="expected-k-mer-distribution" class="level2 page-columns page-full">
-<h2 class="anchored" data-anchor-id="expected-k-mer-distribution">Expected K-mer Distribution</h2>
-<p>If we were to assume that the occurrence of DNA bases are uniformly distributed across a genome, the probability of observing a particular nucleotide at any position is given as:</p>
-<p><span class="math display">\[ P(A) = P(T) = P(G) = P(G) = \frac{1}{4} \]</span></p>
-<p>Under this model, the occurrence of nucleotide bases are assumed to be independent. Hence the probability of a sequence of <em>k</em> bases is simply the product of probabilities of each base:</p>
-<p><span class="math display">\[ P(\text{k-mer}) = (\frac{1}{4})^k \]</span></p>
-<p>We can then compute the expected frequncy of the <em>k</em>-mer using the formula:</p>
-<p><span class="math display">\[ E = (L-k+1) \times (\frac{1}{4})^k \]</span></p>
-
-<div class="no-row-height column-margin column-container"><div class="">
-<p>L = genome length</p>
-</div></div><div class="callout callout-style-default callout-tip callout-titled" title="Example">
+<section id="boyer-moore-algorithm" class="level2">
+<h2 class="anchored" data-anchor-id="boyer-moore-algorithm">Boyer-Moore Algorithm</h2>
+<p>Similar to the exact matching algorithm, we slide pattern string <em>P</em> across text string <em>T</em> to perform our comparison. However, we compare characters from right to left at each alignment. In each alignment, we follow the <em>bad character rule</em> and the <em>good suffix</em> rule.</p>
+<section id="bad-character-rule" class="level3">
+<h3 class="anchored" data-anchor-id="bad-character-rule">Bad Character Rule</h3>
+<p>Upon mismatch, skip alignments until (a) mismatch becomes a match, or (b) <em>P</em> moves past the mismatched character.</p>
+<div class="callout callout-style-default callout-tip callout-titled" title="Example">
 <div class="callout-header d-flex align-content-center">
 <div class="callout-icon-container">
 <i class="callout-icon"></i>
@@ -456,179 +466,199 @@ Example
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>How many <em>ATGCG</em> substrings are expected to occur in the <em>V. cholerae</em> genome?</p>
-<p><span class="math display">\[ E = (1108250 - 5 + 1) \times (\frac{1}{4})^5 = 1082 \]</span></p>
-<p>Under the null distribution, we expect any 5-mer to occur 1082 times.</p>
+<p>Given text <em>T</em> = <em>GCTTCTGCTACCTTTTGCGCGCGCGCGGAA</em>, find the occurrences where pattern <em>P</em> = <em>CCTTTTGC</em> matches using the <strong>bad character rule</strong></p>
+</div>
+</div>
+<div class="grid">
+<div class="g-col-2" style="text-align: center; margin: auto; width: 100%">
+<p><span style="border: 1px solid black; padding: 0.25em 1em"><strong>Step 1</strong></span></p>
+</div>
+<div class="g-col-6">
+<p><em>T</em>: GCTT<span class="light-content" style="color: orange;">C</span><span class="light-content" style="color: green;">TGC</span>TACCTTTTGCGCGCGCGCGGAA<br>
+<em>P</em>: CCTT<span class="light-content" style="color: orange;">T</span><span class="light-content" style="color: green;">TGC</span></p>
+</div>
+<div class="g-col-4">
+<p>Shift to the right until <span class="math inline">\(C\)</span> has a match. Skip 2 alignments.</p>
+</div>
+<div class="g-col-2" style="text-align: center; margin: auto; width: 100%">
+<p><span style="border: 1px solid black; padding: 0.25em 1em"><strong>Step 2</strong></span></p>
+</div>
+<div class="g-col-6">
+<p><em>T</em>: GCTTCTGCT<span class="light-content" style="color: orange;">A</span><span class="light-content" style="color: green;">C</span>CTTTTGCGCGCGCGCGGAA<br>
+<em>P</em>: <span style="display:inline-block; width:3.5ch;"></span>CCTTTT<span class="light-content" style="color: orange;">G</span><span class="light-content" style="color: green;">C</span></p>
+</div>
+<div class="g-col-4">
+<p>Move <em>P</em> until it passes the current alignment. Skip 6 alignments.</p>
+</div>
+<div class="g-col-2" style="text-align: center; margin: auto; width: 100%">
+<p><span style="border: 1px solid black; padding: 0.25em 1em"><strong>Step 3</strong></span></p>
+</div>
+<div class="g-col-6">
+<p><em>T</em>: GCTTCTGCTA<span class="light-content" style="color: green;">CCTTTTGC</span>GCGCGCGCGGAA<br>
+<em>P</em>: <span style="display:inline-block; width:11.5ch;"></span><span class="light-content" style="color: green;">CCTTTTGC</span></p>
+</div>
+<div class="g-col-4">
+<p>All characters have been matched!</p>
 </div>
 </div>
 </section>
-<section id="frequent-words" class="level2">
-<h2 class="anchored" data-anchor-id="frequent-words">Frequent Words</h2>
-<p>In order to initate replication, DNA polymerase must somehow recognize and bind to the <em>ori</em>. This interaction is mediated by <strong>motifs</strong>, DNA sequences that have a higher affinity towards the binding domain of proteins. We can start to identify these motifs by finding the most frequent substrings of length <em>k</em>.</p>
-<div id="most-frequent-kmer" class="cell" data-execution_count="4">
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> most_frequent_kmer(genome: <span class="bu">str</span>, k: <span class="bu">int</span>):</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Compute k-mer frequencies and return k-mer set with the highest counts"""</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    L <span class="op">=</span> <span class="bu">len</span>(genome)</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Compute frequncies</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    kmer_counts <span class="op">=</span> {}</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(L<span class="op">-</span>k<span class="op">+</span><span class="dv">1</span>):</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        kmer <span class="op">=</span> genome[i:i<span class="op">+</span>k]</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> kmer <span class="kw">in</span> kmer_counts:</span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>            kmer_counts[kmer] <span class="op">+=</span> <span class="dv">1</span></span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>            kmer_counts[kmer] <span class="op">=</span> <span class="dv">1</span></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Compute maximum count</span></span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    max_count <span class="op">=</span> <span class="bu">max</span>(kmer_counts.values())</span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Retain k-mers with counts equal to max_count</span></span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    max_kmers <span class="op">=</span> []</span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> kmer, count <span class="kw">in</span> kmer_counts.items():</span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> count <span class="op">==</span> max_count:</span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>            max_kmers.append(kmer)</span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> max_kmers</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<section id="good-suffix-rule" class="level3">
+<h3 class="anchored" data-anchor-id="good-suffix-rule">Good Suffix Rule</h3>
+<p>Let <em>t</em> = substring matched by inner loop; skip until (a) there are no mismatches between <em>P</em> and <em>t</em> or (b) <em>P</em> moves past <em>t</em>.</p>
+<div class="grid">
+<div class="g-col-2" style="text-align: center; margin: auto; width: 100%">
+<p><span style="border: 1px solid black; padding: 0.25em 1em"><strong>Step 1</strong></span></p>
 </div>
-<div id="cell-fig-max-kmer-counts" class="cell" data-execution_count="5">
-<div class="cell-output cell-output-display">
-<div id="fig-max-kmer-counts" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-max-kmer-counts-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-max-kmer-counts-output-1.png" class="img-fluid figure-img">
+<div class="g-col-6">
+<p><em>T</em>: CGTGC<span class="light-content" style="color: orange;">C</span><span class="light-content" style="color: green;">TAC</span>TTACTTACTTACTTACGCGAA<br>
+<em>P</em>: CTTAC<span class="light-content" style="color: orange;">T</span><span class="light-content" style="color: green;">TAC</span></p>
 </div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-max-kmer-counts-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1: Number of most-frequent <em>k</em>-mers for k = 1…20
-</figcaption>
-</figure>
+<div class="g-col-4">
+<p>Shift <em>P</em> to the right until <em>t</em> has a match. Skip 3 alignments.</p>
+</div>
+<div class="g-col-2" style="text-align: center; margin: auto; width: 100%">
+<p><span style="border: 1px solid black; padding: 0.25em 1em"><strong>Step 2</strong></span></p>
+</div>
+<div class="g-col-6">
+<p><em>T</em>: CGTGC<span class="light-content" style="color: orange;">C</span><span class="light-content" style="color: green;">TAC</span>TTACTTACTTACTTACGCGAA<br>
+<em>P</em>: <span style="display:inline-block; width:5ch;"></span>C<span class="light-content" style="color: orange;">T</span><span class="light-content" style="color: green;">TACTTAC</span></p>
+</div>
+<div class="g-col-4">
+<p>Move <em>P</em> until its prefix matches <em>t</em>. Skip 3 alignments.</p>
+</div>
+<div class="g-col-2" style="text-align: center; margin: auto; width: 100%">
+<p><span style="border: 1px solid black; padding: 0.25em 1em"><strong>Step 3</strong></span></p>
+</div>
+<div class="g-col-6">
+<p><em>T</em>: CGTGCCTA<span class="light-content" style="color: green;">CTTACTTAC</span>TTACTTACGCGAA<br>
+<em>P</em>: <span style="display:inline-block; width:9ch;"></span><span class="light-content" style="color: green;">CTTACTTAC</span></p>
+</div>
+<div class="g-col-4">
+<p>All characters have been matched!</p>
 </div>
 </div>
+<hr>
+<p>In Boyer-Moore matching, both the <em>bad character</em> and <em>good suffix</em> rules return the number of skips we can do in pattern matching. The decision in which rule to use is simply the one that yields a higher number of skips. We then shift our pattern <em>P</em> by our number of skips, then recompute a new skip count from the two rules. We repeat the process until we either find an exact match or reach the end of text <em>T</em>.</p>
+<p>A caveat to this approach is that we need to build separate indexes from pattern <em>P</em> for both the <em>bad character</em> and <em>good suffix</em> rules. I won’t go into the detail of the pre-processing step, just think of it as a way to efficiently compute the number of shifts needed after evaluating an alignment. Explore the code is provided below:</p>
+<div id="bm-preprocessing" class="cell" data-execution_count="3">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> build_bc_table(pattern: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="bu">dict</span>[<span class="bu">str</span>, <span class="bu">int</span>]:</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Maps each character to its last index in the pattern"""</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>    bc <span class="op">=</span> {}</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i, c <span class="kw">in</span> <span class="bu">enumerate</span>(pattern):</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>        bc[c] <span class="op">=</span> i</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> bc</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> build_gs_table(pattern: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="bu">list</span>[<span class="bu">int</span>]:</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Preprocess the pattern to create good suffix shift table."""</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> <span class="bu">len</span>(pattern)</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    gs <span class="op">=</span> [<span class="dv">0</span>] <span class="op">*</span> m</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>    border_pos <span class="op">=</span> [<span class="dv">0</span>] <span class="op">*</span> (m <span class="op">+</span> <span class="dv">1</span>)</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Step 1: Precompute border positions</span></span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    i <span class="op">=</span> m</span>
+<span id="cb5-16"><a href="#cb5-16" aria-hidden="true" tabindex="-1"></a>    j <span class="op">=</span> m <span class="op">+</span> <span class="dv">1</span></span>
+<span id="cb5-17"><a href="#cb5-17" aria-hidden="true" tabindex="-1"></a>    border_pos[i] <span class="op">=</span> j</span>
+<span id="cb5-18"><a href="#cb5-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-19"><a href="#cb5-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> i <span class="op">&gt;</span> <span class="dv">0</span>:</span>
+<span id="cb5-20"><a href="#cb5-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> j <span class="op">&lt;=</span> m <span class="kw">and</span> pattern[i <span class="op">-</span> <span class="dv">1</span>] <span class="op">!=</span> pattern[j <span class="op">-</span> <span class="dv">1</span> <span class="cf">if</span> j <span class="op">&lt;</span> m <span class="cf">else</span> <span class="dv">0</span>]:</span>
+<span id="cb5-21"><a href="#cb5-21" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> gs[j <span class="op">-</span> <span class="dv">1</span>] <span class="op">==</span> <span class="dv">0</span>:</span>
+<span id="cb5-22"><a href="#cb5-22" aria-hidden="true" tabindex="-1"></a>                gs[j <span class="op">-</span> <span class="dv">1</span>] <span class="op">=</span> j <span class="op">-</span> i</span>
+<span id="cb5-23"><a href="#cb5-23" aria-hidden="true" tabindex="-1"></a>            j <span class="op">=</span> border_pos[j]</span>
+<span id="cb5-24"><a href="#cb5-24" aria-hidden="true" tabindex="-1"></a>        i <span class="op">-=</span> <span class="dv">1</span></span>
+<span id="cb5-25"><a href="#cb5-25" aria-hidden="true" tabindex="-1"></a>        j <span class="op">-=</span> <span class="dv">1</span></span>
+<span id="cb5-26"><a href="#cb5-26" aria-hidden="true" tabindex="-1"></a>        border_pos[i] <span class="op">=</span> j</span>
+<span id="cb5-27"><a href="#cb5-27" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-28"><a href="#cb5-28" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Step 2: Precompute shifts for prefixes</span></span>
+<span id="cb5-29"><a href="#cb5-29" aria-hidden="true" tabindex="-1"></a>    j <span class="op">=</span> border_pos[<span class="dv">0</span>]</span>
+<span id="cb5-30"><a href="#cb5-30" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(m):</span>
+<span id="cb5-31"><a href="#cb5-31" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> gs[i] <span class="op">==</span> <span class="dv">0</span>:</span>
+<span id="cb5-32"><a href="#cb5-32" aria-hidden="true" tabindex="-1"></a>            gs[i] <span class="op">=</span> j</span>
+<span id="cb5-33"><a href="#cb5-33" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> i <span class="op">==</span> j:</span>
+<span id="cb5-34"><a href="#cb5-34" aria-hidden="true" tabindex="-1"></a>            j <span class="op">=</span> border_pos[j]</span>
+<span id="cb5-35"><a href="#cb5-35" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-36"><a href="#cb5-36" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> gs</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 </div>
-<p>At <span class="math inline">\(k = 11\)</span>, we find 5 most-frequent <em>k</em>-mers. Is this result surprising? Let’s first check the sequences of the 11-mers.</p>
-<div class="cell" data-execution_count="6">
-<div id="tbl-11mer-seqs" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="6">
-<figure class="quarto-float quarto-float-tbl figure">
-<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl quarto-uncaptioned" id="tbl-11mer-seqs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;1
-</figcaption>
-<div aria-describedby="tbl-11mer-seqs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<div class="cell-output cell-output-display" data-execution_count="6">
-<div><style>
-.dataframe > thead > tr,
-.dataframe > tbody > tr {
-  text-align: right;
-  white-space: pre-wrap;
-}
-</style>
-<small>shape: (5, 2)</small>
-<table class="dataframe do-not-create-environment caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
-<thead>
-<tr class="header">
-<th data-quarto-table-cell-role="th">n</th>
-<th data-quarto-table-cell-role="th">sequence</th>
-</tr>
-<tr class="even">
-<th>i64</th>
-<th>str</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>1</td>
-<td>"AGGCGTTTGTT"</td>
-</tr>
-<tr class="even">
-<td>2</td>
-<td>"GGGACTGGAAA"</td>
-</tr>
-<tr class="odd">
-<td>3</td>
-<td>"GGACTGGAAAC"</td>
-</tr>
-<tr class="even">
-<td>4</td>
-<td>"GACTGGAAACG"</td>
-</tr>
-<tr class="odd">
-<td>5</td>
-<td>"ACTGGAAACGC"</td>
-</tr>
-</tbody>
-</table>
+<p>We can now combine both rules to implement the Boyer-Moore algorithm.</p>
+<div id="boyer-moore-function" class="cell" data-execution_count="4">
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> boyer_moore_search(text: <span class="bu">str</span>, pattern: <span class="bu">str</span>):</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Boyer-Moore search using the Bad Character and Good Suffix heuristics"""</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>    n <span class="op">=</span> <span class="bu">len</span>(text)</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    m <span class="op">=</span> <span class="bu">len</span>(pattern)</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> m <span class="op">==</span> <span class="dv">0</span> <span class="kw">or</span> n <span class="op">==</span> <span class="dv">0</span> <span class="kw">or</span> m <span class="op">&gt;</span> n:</span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> []</span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Precompute indexes</span></span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>    bc <span class="op">=</span> build_bc_table(pattern)</span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>    gs <span class="op">=</span> build_gs_table(pattern)</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>    matches <span class="op">=</span> []</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    shift <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">while</span> shift <span class="op">&lt;=</span> n <span class="op">-</span> m:</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Start from right-most position of current alignment</span></span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>        j <span class="op">=</span> m<span class="op">-</span><span class="dv">1</span></span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>        <span class="co"># Compare from right to left</span></span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> j <span class="op">&gt;=</span> <span class="dv">0</span> <span class="kw">and</span> pattern[j] <span class="op">==</span> text[shift<span class="op">+</span>j]:</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>            j <span class="op">-=</span> <span class="dv">1</span></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> j <span class="op">&lt;</span> <span class="dv">0</span>:</span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Match found at index = shift</span></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>            matches.append(shift)</span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Shift so that next character after matched substring aligns</span></span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>            shift <span class="op">+=</span> gs[<span class="dv">0</span>] <span class="cf">if</span> m <span class="op">&gt;</span> <span class="dv">1</span> <span class="cf">else</span> <span class="dv">1</span></span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>            <span class="bu">print</span>(<span class="ss">f"MATCH: shifting pattern to start at index </span><span class="sc">{</span>shift<span class="op">-</span><span class="dv">1</span><span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>            <span class="co"># Compute shifts</span></span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a>            bc_shift <span class="op">=</span> j <span class="op">-</span> bc.get(text[shift<span class="op">+</span>j], <span class="op">-</span><span class="dv">1</span>)</span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a>            gs_shift <span class="op">=</span> gs[j] <span class="cf">if</span> j <span class="op">&lt;</span> m <span class="op">-</span> <span class="dv">1</span> <span class="cf">else</span> <span class="dv">1</span></span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>            shift <span class="op">+=</span> <span class="bu">max</span>(bc_shift, gs_shift)</span>
+<span id="cb6-36"><a href="#cb6-36" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> bc_shift <span class="op">&gt;</span> gs_shift:</span>
+<span id="cb6-37"><a href="#cb6-37" aria-hidden="true" tabindex="-1"></a>                <span class="bu">print</span>(<span class="ss">f"Using Bad Character rule: shifting by </span><span class="sc">{</span>shift<span class="sc">}</span><span class="ss"> positions"</span>)</span>
+<span id="cb6-38"><a href="#cb6-38" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>:</span>
+<span id="cb6-39"><a href="#cb6-39" aria-hidden="true" tabindex="-1"></a>                <span class="bu">print</span>(<span class="ss">f"Using Good Suffix rule: shifting by </span><span class="sc">{</span>shift<span class="sc">}</span><span class="ss"> positions"</span>)</span>
+<span id="cb6-40"><a href="#cb6-40" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-41"><a href="#cb6-41" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> matches        </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Sequences of the most frequent 11-mers</p>
+<div id="cell-boyer-moore-example" class="cell" data-execution_count="5">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>text <span class="op">=</span> <span class="st">"AGTCGATGGCATTGATCGATTTTAGGCATTAGATCA"</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>pattern <span class="op">=</span> <span class="st">"GGCAT"</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>boyer_moore_search(text, pattern)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Using Bad Character rule: shifting by 3 positions
+Using Bad Character rule: shifting by 6 positions
+Using Good Suffix rule: shifting by 7 positions
+MATCH: shifting pattern to start at index 10
+Using Good Suffix rule: shifting by 15 positions
+Using Good Suffix rule: shifting by 19 positions
+Using Good Suffix rule: shifting by 20 positions
+Using Bad Character rule: shifting by 23 positions
+Using Good Suffix rule: shifting by 24 positions
+MATCH: shifting pattern to start at index 27
+Using Good Suffix rule: shifting by 29 positions
+Using Good Suffix rule: shifting by 33 positions</code></pre>
+</div>
+<div id="boyer-moore-example" class="cell-output cell-output-display" data-execution_count="56">
+<pre><code>[7, 24]</code></pre>
 </div>
 </div>
-</figure>
+<p>In the example, the <em>bad character</em> heuristic always produced the most number of shifts for all alignment comparisons. The function detects that the pattern occurs at positions 7 and 24 of our text. Let us check if that is correct.</p>
+<div id="booyer-moore-verification" class="cell" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"First match:"</span>, text[<span class="dv">7</span>:<span class="dv">7</span><span class="op">+</span><span class="bu">len</span>(pattern)])</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Second match:"</span>, text[<span class="dv">24</span>:<span class="dv">24</span><span class="op">+</span><span class="bu">len</span>(pattern)])</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>First match: GGCAT
+Second match: GGCAT</code></pre>
 </div>
 </div>
-<p>Notice that there is substantial overlap between the 2<sup>nd</sup> and 3<sup>rd</sup> 11-mers when we shift the 3<sup>rd</sup> 11-mer one position to the right. Do the same for the other 11-mers (except for the first one) until the <em>AAA</em> subregions align:</p>
-<pre><code>GGGACTGGAAA
- GGACTGGAAAC
-  GACTGGAAACG
-   ACTGGAAACGC</code></pre>
-<p>The <em>ACTGGAAA</em> 8-mer seems like a good candidate for the <em>ori</em> binding motif for <em>V. cholerae</em>.</p>
+
+
 </section>
-<section id="asymmetry-of-replication" class="level2">
-<h2 class="anchored" data-anchor-id="asymmetry-of-replication">Asymmetry of Replication</h2>
-<p>DNA consists of two complementary strands that run in opposite (antiparallel) directions. One runs in the <span class="math inline">\(5' \to 3'\)</span> (leading strand) direction while the other runs in the <span class="math inline">\(3' \to 5'\)</span> (lagging strand) direction. Since <strong>DNA polymerase</strong> can only add nucleotides in the <span class="math inline">\(5' \to 3'\)</span> direction, synthesis on the lagging strand is fragmented and discontinuous. This phenomenon leads to the formation of small gaps called <strong>Okazaki fragments</strong>.</p>
-<div id="fig-okazaki" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-okazaki-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="assets/okazaki.png" class="img-fluid figure-img" style="width:80.0%">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-okazaki-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;2: Okazaki fragments in a replicating DNA strand
-</figcaption>
-</figure>
-</div>
-<p>The transient single-stranded state of the lagging strand makes it unstable and more prone to mutation. It has been empirically confirmed that mutation rates are slightly higher for the lagging strand and this has been attributed to the spontaneous conversion of cytosine (C) to thymine (T), a phenomenon known as <strong>deamination</strong>.</p>
-<p>As we move along the genome, we will observe a change in relative GC content. The frequency of cytosine will decrease in the forward half-strand due to deamination and increase in the reverse half-strand (<a href="#fig-skew-diagram" class="quarto-xref">Figure&nbsp;3</a>).</p>
-<div id="fig-skew-diagram" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-skew-diagram-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="assets/skew_diagram.png" class="img-fluid figure-img">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-skew-diagram-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3: Schematic representation of the GC skew
-</figcaption>
-</figure>
-</div>
-<p>We capture this information by keeping track of the running difference betwee the total counts of G and C. We then visualize the results in a <strong>skew diagram</strong>. Let’s plot the skew diagram for <em>V. cholerae</em></p>
-<div id="compute-genome-skew" class="cell" data-execution_count="7">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> skew(genome: <span class="bu">str</span>) <span class="op">-&gt;</span> np.array:</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Compute the GC skew of a sequence"""</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    L <span class="op">=</span> <span class="bu">len</span>(genome)</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    skew <span class="op">=</span> np.zeros(genome_length<span class="op">+</span><span class="dv">1</span>)</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> pos, base <span class="kw">in</span> <span class="bu">enumerate</span>(genome, start<span class="op">=</span><span class="dv">1</span>):</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> base <span class="op">==</span> <span class="st">"G"</span>:</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>            skew[pos] <span class="op">=</span> skew[pos<span class="op">-</span><span class="dv">1</span>] <span class="op">+</span> <span class="dv">1</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">elif</span> base <span class="op">==</span> <span class="st">"C"</span>:</span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>            skew[pos] <span class="op">=</span> skew[pos<span class="op">-</span><span class="dv">1</span>] <span class="op">-</span> <span class="dv">1</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>            skew[pos] <span class="op">=</span> skew[pos<span class="op">-</span><span class="dv">1</span>]</span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> skew</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<div id="cell-fig-genome-skew" class="cell" data-execution_count="8">
-<div class="cell-output cell-output-display">
-<div id="fig-genome-skew" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-genome-skew-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-genome-skew-output-1.png" class="img-fluid figure-img">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-genome-skew-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;4: Genome skew of <em>V. cholerae</em>
-</figcaption>
-</figure>
-</div>
-</div>
-</div>
-<p>As illustrated in <a href="#fig-skew-diagram" class="quarto-xref">Figure&nbsp;3</a>, the part of the graph where the skew transitions from decreasing to increasing is the <em>ori</em> (highlighted in green). The part where the skew goes from increasing to decreasing is the <em>ter</em> (highlighted in red), the region where replication stops or terminates.</p>
-
-
 </section>
 
 </main> <!-- /main -->

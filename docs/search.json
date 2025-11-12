@@ -4,70 +4,7 @@
     "href": "index.html",
     "title": "BioByte",
     "section": "",
-    "text": "Order By\n      Default\n      \n        Title\n      \n      \n        Date - Oldest\n      \n      \n        Date - Newest\n      \n      \n        Author\n      \n    \n  \n\n\n\n\n\n\n\n\n\n\nFinding ori\n\n\n\ngenomics\n\nbioinformatics\n\n\n\nExploring genome properties to elucidate the origin of replication\n\n\n\n\n\nNov 11, 2025\n\n\n\n\n\n\n\n\n\n\n\n\nAlignment-free Genome Comparisons\n\n\n\ngenomics\n\nbioinformatics\n\n\n\nAssess sequence similarity between genomes using k-mer composition\n\n\n\n\n\nNov 11, 2025\n\n\n\n\n\n\n\n\n\n\n\n\nWelcome to BioByte!\n\n\n\nnews\n\n\n\nLearn the motivation behind this website\n\n\n\n\n\nNov 4, 2025\n\n\nJan Emmanuel Samson\n\n\n\n\n\nNo matching items"
-  },
-  {
-    "objectID": "posts/kmer-analysis/index.html",
-    "href": "posts/kmer-analysis/index.html",
-    "title": "Alignment-free Genome Comparisons",
-    "section": "",
-    "text": "Many sequence comparison workflows start with alignment, a computationally intensive task that scales quadratically with sequence length. Here, we explore an alignment-free method for comparing multiple genomes using k-mer counts. Put simply, a k-mer is a contiguous substring of a larger sequence with lenght k.\nThe workflow is as follows:"
-  },
-  {
-    "objectID": "posts/kmer-analysis/index.html#data-retrieval",
-    "href": "posts/kmer-analysis/index.html#data-retrieval",
-    "title": "Alignment-free Genome Comparisons",
-    "section": "Data Retrieval",
-    "text": "Data Retrieval\nThree influenza strains and their corresponding genomes accessions are given below:\n\n\n\nStrain\nAccession\n\n\n\n\nInfluenza A\nGCA_000865725\n\n\nInfluenza B\nGCA_000820495\n\n\nInfluenza C\nGCA_000856665\n\n\n\nSave the metadata as a CSV file in the path data/subtypes.csv. The datasets utility can be used to easily download the genomes in FASTA format. The csvtk command just extracts the accession column from the metadata.\n1datasets download genome accession \\\n    --inputfile &lt;(csvtk cut -Uf accession data/substypes.csv) \\\n    --include genome \\\n    --filename data/genomes.zip\n\n2unzip data/genomes.zip -d data\n\n1\n\nDownload genome files in FASTA format\n\n2\n\nUnzip folder and extract the files into the data directory"
-  },
-  {
-    "objectID": "posts/kmer-analysis/index.html#genome-decomposition-and-k-mer-counting",
-    "href": "posts/kmer-analysis/index.html#genome-decomposition-and-k-mer-counting",
-    "title": "Alignment-free Genome Comparisons",
-    "section": "Genome Decomposition and K-mer Counting",
-    "text": "Genome Decomposition and K-mer Counting\nIn this step, we break down the genome sequence into its substrings of length k while keeping count of each unique substring. The bionumpy library provides the functionality for loading FASTA files and computng k-mer frequencies.\n\nimport bionumpy as bnp\n\n# Load genome into memory\ngenome_fp = \"data/ncbi_dataset/data/GCA_000820495.2/GCA_000820495.2_ViralMultiSegProj14656_genomic.fna\"\nrecord = bnp.open(genome_fp).read()\n\n# Set k-mer size and alphabet\nk = 3\nalphabet = \"ACGT\"\n\n# Compute complete k-mer set and initialize to zero\nfrequencies = {\n    \"\".join(kmer): 0 \n    for kmer in itertools.combinations_with_replacement(alphabet, k)\n}\n\n# Decompose into k-mers and compute frequencies\nkmers = bnp.sequence.get_kmers(record.sequence, k)\ncounts = bnp.count_encoded(kmers, axis=None)\nfor kmer, count in zip(counts.alphabet, counts.counts):\n    frequencies[kmer] = count"
-  },
-  {
-    "objectID": "posts/kmer-analysis/index.html#visualization",
-    "href": "posts/kmer-analysis/index.html#visualization",
-    "title": "Alignment-free Genome Comparisons",
-    "section": "Visualization",
-    "text": "Visualization\nWe can inspect the distribution of k-mers by plotting their counts as a histogram.\n\n\n\n\n\n\n\n\n\n\nFigure 1: Distribution of 3-mers of the Influenza genome\n\n\n\n\nFrom Figure 1, we can observe that k-mers such as CCG, CGC, CGT, GCG, and TCG have low counts while AAA and GAA have high frequencies. Does this hint that the Influenza genome is AT rich?\nAnother way to visualize k-mer counts is thru a heatmap. To do this, we first reshape the counts array into a square matrix, then convert the frequencies to log-scale with pseudocounts.\n\n\n\n\n\n\n\n\nFigure 2: 3-mer heatmap of the Influenza genome"
-  },
-  {
-    "objectID": "posts/kmer-analysis/index.html#measuring-distance",
-    "href": "posts/kmer-analysis/index.html#measuring-distance",
-    "title": "Alignment-free Genome Comparisons",
-    "section": "Measuring Distance",
-    "text": "Measuring Distance\nThe k-mer frequencies are represented as 4k-dimensional vectors. We can estimate the similarity of two genomes by computing a distance metric using their k-mer vectors. To remove the influence of genome size to the computed distance, we first normalize the elements then compute the L2 distance, also known as the Euclidean distance. I’ve packaged our previously implemented functions into a convenience class called KmerSet.\n\nfrom scipy.spatial import distance\n\ndef extract_kmer_counts(ks: KmerSet):\n    \"\"\"Flatten k-mer counts into a row vector\"\"\"\n    return np.array(list(ks.counts().values()))\n\ndef kmer_distance(ks1: KmerSet, ks2: KmerSet, metric: str = \"euclidean\"):\n    \"\"\"Compute the distance between two vectors containing k-mer counts\"\"\"\n    counts1 = extract_kmer_counts(ks1)\n    counts2 = extract_kmer_counts(ks2)\n\n    # Normalize k-mer counts to remove genome size influence\n    counts1 = counts1 / np.sum(counts1)\n    counts2 = counts2 / np.sum(counts2)\n\n    dist = None\n    match metric:\n        case \"euclidean\":\n            dist = distance.euclidean(counts1, counts2)\n        case \"cosine\":\n            dist = distance.cosine(counts1, counts2)\n        case \"manhattan\":\n            dist = distance.cityblock(counts1, counts2)\n        case _:\n            dist = distance.euclidean(counts1, counts2)\n\n    return dist\n\nComputing the distances between pairwise comparisons of three Influenza genomes, we get the matrix in Figure 3.\n\n\n\n\n\n\n\n\nFigure 3: Distance matrix of three Influenza genomes\n\n\n\n\n\nThe low distance values show the relatedness of the three genomes. This makes sense as all genomes are derived from the Influenza virus. However, we are still able to detect subtle differences between genomes by virtue of their k-mer compositions. Using the distances, we can conclude that Influenza A (GCA_000865725) has a genome that is more akin to Influenza C (GCA_000856665)."
-  },
-  {
-    "objectID": "about.html",
-    "href": "about.html",
-    "title": "Jan Samson",
-    "section": "",
-    "text": "Jan is a researcher at De La Salle University - Manila. He is a seasoned bioinformatician with over three years of experience in genomic data science and software development."
-  },
-  {
-    "objectID": "about.html#education",
-    "href": "about.html#education",
-    "title": "Jan Samson",
-    "section": "Education",
-    "text": "Education\nUniversity of Philippines Diliman | Quezon City, PH\nMS Bioinformatics | Aug 2023 - Aug 2026\nUniversity of the Philippines Los Banos | Laguna, PH\nB.S Biology, major in Genetics | Aug 2018 - Aug 2022"
-  },
-  {
-    "objectID": "about.html#experience",
-    "href": "about.html#experience",
-    "title": "Jan Samson",
-    "section": "Experience",
-    "text": "Experience\nDe La Salle University - Manila | Research Associate | July 2025 - present\nCleanNest | Co-owner, Business Analyst | June 2024 - present\nVillage88 | Software Developer Intern | Dec 2022 - Apr 2023"
-  },
-  {
-    "objectID": "posts/welcome/index.html",
-    "href": "posts/welcome/index.html",
-    "title": "Welcome to BioByte!",
-    "section": "",
-    "text": "Warning\n\n\n\nThis website is a work in progress. Expect the layout and formatting to change without prior notice.\n\n\n\nHello there!\nI am Jan, the sole author of this website. I finished my undergraduate degree in Biology and currently doing my masters in Bioinformatics. I work as a research associate for a clinical study on diabetic foot ulcers. My main role revolves around thermal imaging of wounds of diabetic patients. Later on, I’ll be constructing and analyzing the proteomes derived from exudate samples at different stages of healing. Outside of work, I run a small, family-owned business where I wear many hats as co-owner, software developer, and business analyst. In my free time, I like to watch movies and read books. I have a keen liking towards games and programming.\nBioByte is a blogging website focusing on topics in computational biology, bioinformatics, data science, and programming. It is intended to be my personal notebook for learning new topics and concepts in previously mentioned fields. As much as possible, I try to make each blog independent from all others. Written proses will be related with one another through links when appropriate.\nI will be covering topics in:\n\nGenomics and Proteomics\nComputational Biology\nAI and Machine Learning\nComputer Vision\nData Science\nany many other (hopefully related) topics!\n\nFeel free to reach out thru my email at jegsamson.dev@gmail.com. You can also find my personal GitHub account here."
+    "text": "Order By\n      Default\n      \n        Title\n      \n      \n        Date - Oldest\n      \n      \n        Date - Newest\n      \n      \n        Author\n      \n    \n  \n\n\n\n\n\n\n\n\n\n\nFinding ori\n\n\n\ngenomics\n\nbioinformatics\n\n\n\nExploring genome properties to elucidate the origin of replication\n\n\n\n\n\nNov 12, 2025\n\n\n\n\n\n\n\n\n\n\n\n\nAlignment-free Genome Comparisons\n\n\n\ngenomics\n\nbioinformatics\n\n\n\nAssess sequence similarity between genomes using k-mer composition\n\n\n\n\n\nNov 12, 2025\n\n\n\n\n\n\n\n\n\n\n\n\nMethods for Comparing Strings\n\n\n\nalgorithms\n\ncomputer-science\n\nbioinformatics\n\n\n\nImplementing a few string matching algorithms used in bioinformatics\n\n\n\n\n\nNov 12, 2025\n\n\n\n\n\n\n\n\n\n\n\n\nWelcome to BioByte!\n\n\n\nnews\n\n\n\nLearn the motivation behind this website\n\n\n\n\n\nNov 4, 2025\n\n\nJan Emmanuel Samson\n\n\n\n\n\nNo matching items"
   },
   {
     "objectID": "posts/gc-skew/index.html",
@@ -110,5 +47,96 @@
     "title": "Finding ori",
     "section": "Asymmetry of Replication",
     "text": "Asymmetry of Replication\nDNA consists of two complementary strands that run in opposite (antiparallel) directions. One runs in the \\(5' \\to 3'\\) (leading strand) direction while the other runs in the \\(3' \\to 5'\\) (lagging strand) direction. Since DNA polymerase can only add nucleotides in the \\(5' \\to 3'\\) direction, synthesis on the lagging strand is fragmented and discontinuous. This phenomenon leads to the formation of small gaps called Okazaki fragments.\n\n\n\n\n\n\nFigure 2: Okazaki fragments in a replicating DNA strand\n\n\n\nThe transient single-stranded state of the lagging strand makes it unstable and more prone to mutation. It has been empirically confirmed that mutation rates are slightly higher for the lagging strand and this has been attributed to the spontaneous conversion of cytosine (C) to thymine (T), a phenomenon known as deamination.\nAs we move along the genome, we will observe a change in relative GC content. The frequency of cytosine will decrease in the forward half-strand due to deamination and increase in the reverse half-strand (Figure 3).\n\n\n\n\n\n\nFigure 3: Schematic representation of the GC skew\n\n\n\nWe capture this information by keeping track of the running difference betwee the total counts of G and C. We then visualize the results in a skew diagram. Let’s plot the skew diagram for V. cholerae\n\nimport numpy as np\n\ndef skew(genome: str) -&gt; np.array:\n    \"\"\"Compute the GC skew of a sequence\"\"\"\n    L = len(genome)\n    skew = np.zeros(genome_length+1)\n    for pos, base in enumerate(genome, start=1):\n        if base == \"G\":\n            skew[pos] = skew[pos-1] + 1\n        elif base == \"C\":\n            skew[pos] = skew[pos-1] - 1\n        else:\n            skew[pos] = skew[pos-1]\n\n    return skew\n\n\n\n\n\n\n\n\n\nFigure 4: Genome skew of V. cholerae\n\n\n\n\n\nAs illustrated in Figure 3, the part of the graph where the skew transitions from decreasing to increasing is the ori (highlighted in green). The part where the skew goes from increasing to decreasing is the ter (highlighted in red), the region where replication stops or terminates."
+  },
+  {
+    "objectID": "posts/welcome/index.html",
+    "href": "posts/welcome/index.html",
+    "title": "Welcome to BioByte!",
+    "section": "",
+    "text": "Warning\n\n\n\nThis website is a work in progress. Expect the layout and formatting to change without prior notice.\n\n\n\nHello there!\nI am Jan, the sole author of this website. I finished my undergraduate degree in Biology and currently doing my masters in Bioinformatics. I work as a research associate for a clinical study on diabetic foot ulcers. My main role revolves around thermal imaging of wounds of diabetic patients. Later on, I’ll be constructing and analyzing the proteomes derived from exudate samples at different stages of healing. Outside of work, I run a small, family-owned business where I wear many hats as co-owner, software developer, and business analyst. In my free time, I like to watch movies and read books. I have a keen liking towards games and programming.\nBioByte is a blogging website focusing on topics in computational biology, bioinformatics, data science, and programming. It is intended to be my personal notebook for learning new topics and concepts in previously mentioned fields. As much as possible, I try to make each blog independent from all others. Written proses will be related with one another through links when appropriate.\nI will be covering topics in:\n\nGenomics and Proteomics\nComputational Biology\nAI and Machine Learning\nComputer Vision\nData Science\nany many other (hopefully related) topics!\n\nFeel free to reach out thru my email at jegsamson.dev@gmail.com. You can also find my personal GitHub account here."
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "Jan Samson",
+    "section": "",
+    "text": "Jan is a researcher at De La Salle University - Manila. He is a seasoned bioinformatician with over three years of experience in genomic data science and software development."
+  },
+  {
+    "objectID": "about.html#education",
+    "href": "about.html#education",
+    "title": "Jan Samson",
+    "section": "Education",
+    "text": "Education\nUniversity of Philippines Diliman | Quezon City, PH\nMS Bioinformatics | Aug 2023 - Aug 2026\nUniversity of the Philippines Los Banos | Laguna, PH\nB.S Biology, major in Genetics | Aug 2018 - Aug 2022"
+  },
+  {
+    "objectID": "about.html#experience",
+    "href": "about.html#experience",
+    "title": "Jan Samson",
+    "section": "Experience",
+    "text": "Experience\nDe La Salle University - Manila | Research Associate | July 2025 - present\nCleanNest | Co-owner, Business Analyst | June 2024 - present\nVillage88 | Software Developer Intern | Dec 2022 - Apr 2023"
+  },
+  {
+    "objectID": "posts/kmer-analysis/index.html",
+    "href": "posts/kmer-analysis/index.html",
+    "title": "Alignment-free Genome Comparisons",
+    "section": "",
+    "text": "Many sequence comparison workflows start with alignment, a computationally intensive task that scales quadratically with sequence length. Here, we explore an alignment-free method for comparing multiple genomes using k-mer counts. Put simply, a k-mer is a contiguous substring of a larger sequence with lenght k.\nThe workflow is as follows:"
+  },
+  {
+    "objectID": "posts/kmer-analysis/index.html#data-retrieval",
+    "href": "posts/kmer-analysis/index.html#data-retrieval",
+    "title": "Alignment-free Genome Comparisons",
+    "section": "Data Retrieval",
+    "text": "Data Retrieval\nThree influenza strains and their corresponding genomes accessions are given below:\n\n\n\nStrain\nAccession\n\n\n\n\nInfluenza A\nGCA_000865725\n\n\nInfluenza B\nGCA_000820495\n\n\nInfluenza C\nGCA_000856665\n\n\n\nSave the metadata as a CSV file in the path data/subtypes.csv. The datasets utility can be used to easily download the genomes in FASTA format. The csvtk command just extracts the accession column from the metadata.\n1datasets download genome accession \\\n    --inputfile &lt;(csvtk cut -Uf accession data/substypes.csv) \\\n    --include genome \\\n    --filename data/genomes.zip\n\n2unzip data/genomes.zip -d data\n\n1\n\nDownload genome files in FASTA format\n\n2\n\nUnzip folder and extract the files into the data directory"
+  },
+  {
+    "objectID": "posts/kmer-analysis/index.html#genome-decomposition-and-k-mer-counting",
+    "href": "posts/kmer-analysis/index.html#genome-decomposition-and-k-mer-counting",
+    "title": "Alignment-free Genome Comparisons",
+    "section": "Genome Decomposition and K-mer Counting",
+    "text": "Genome Decomposition and K-mer Counting\nIn this step, we break down the genome sequence into its substrings of length k while keeping count of each unique substring. The bionumpy library provides the functionality for loading FASTA files and computng k-mer frequencies.\n\nimport bionumpy as bnp\n\n# Load genome into memory\ngenome_fp = \"data/ncbi_dataset/data/GCA_000820495.2/GCA_000820495.2_ViralMultiSegProj14656_genomic.fna\"\nrecord = bnp.open(genome_fp).read()\n\n# Set k-mer size and alphabet\nk = 3\nalphabet = \"ACGT\"\n\n# Compute complete k-mer set and initialize to zero\nfrequencies = {\n    \"\".join(kmer): 0 \n    for kmer in itertools.combinations_with_replacement(alphabet, k)\n}\n\n# Decompose into k-mers and compute frequencies\nkmers = bnp.sequence.get_kmers(record.sequence, k)\ncounts = bnp.count_encoded(kmers, axis=None)\nfor kmer, count in zip(counts.alphabet, counts.counts):\n    frequencies[kmer] = count"
+  },
+  {
+    "objectID": "posts/kmer-analysis/index.html#visualization",
+    "href": "posts/kmer-analysis/index.html#visualization",
+    "title": "Alignment-free Genome Comparisons",
+    "section": "Visualization",
+    "text": "Visualization\nWe can inspect the distribution of k-mers by plotting their counts as a histogram.\n\n\n\n\n\n\n\n\n\n\nFigure 1: Distribution of 3-mers of the Influenza genome\n\n\n\n\nFrom Figure 1, we can observe that k-mers such as CCG, CGC, CGT, GCG, and TCG have low counts while AAA and GAA have high frequencies. Does this hint that the Influenza genome is AT rich?\nAnother way to visualize k-mer counts is thru a heatmap. To do this, we first reshape the counts array into a square matrix, then convert the frequencies to log-scale with pseudocounts.\n\n\n\n\n\n\n\n\nFigure 2: 3-mer heatmap of the Influenza genome"
+  },
+  {
+    "objectID": "posts/kmer-analysis/index.html#measuring-distance",
+    "href": "posts/kmer-analysis/index.html#measuring-distance",
+    "title": "Alignment-free Genome Comparisons",
+    "section": "Measuring Distance",
+    "text": "Measuring Distance\nThe k-mer frequencies are represented as 4k-dimensional vectors. We can estimate the similarity of two genomes by computing a distance metric using their k-mer vectors. To remove the influence of genome size to the computed distance, we first normalize the elements then compute the L2 distance, also known as the Euclidean distance. I’ve packaged our previously implemented functions into a convenience class called KmerSet.\n\nfrom scipy.spatial import distance\n\ndef extract_kmer_counts(ks: KmerSet):\n    \"\"\"Flatten k-mer counts into a row vector\"\"\"\n    return np.array(list(ks.counts().values()))\n\ndef kmer_distance(ks1: KmerSet, ks2: KmerSet, metric: str = \"euclidean\"):\n    \"\"\"Compute the distance between two vectors containing k-mer counts\"\"\"\n    counts1 = extract_kmer_counts(ks1)\n    counts2 = extract_kmer_counts(ks2)\n\n    # Normalize k-mer counts to remove genome size influence\n    counts1 = counts1 / np.sum(counts1)\n    counts2 = counts2 / np.sum(counts2)\n\n    dist = None\n    match metric:\n        case \"euclidean\":\n            dist = distance.euclidean(counts1, counts2)\n        case \"cosine\":\n            dist = distance.cosine(counts1, counts2)\n        case \"manhattan\":\n            dist = distance.cityblock(counts1, counts2)\n        case _:\n            dist = distance.euclidean(counts1, counts2)\n\n    return dist\n\nComputing the distances between pairwise comparisons of three Influenza genomes, we get the matrix in Figure 3.\n\n\n\n\n\n\n\n\nFigure 3: Distance matrix of three Influenza genomes\n\n\n\n\n\nThe low distance values show the relatedness of the three genomes. This makes sense as all genomes are derived from the Influenza virus. However, we are still able to detect subtle differences between genomes by virtue of their k-mer compositions. Using the distances, we can conclude that Influenza A (GCA_000865725) has a genome that is more akin to Influenza C (GCA_000856665)."
+  },
+  {
+    "objectID": "posts/string-matching/index.html",
+    "href": "posts/string-matching/index.html",
+    "title": "Methods for Comparing Strings",
+    "section": "",
+    "text": "The string matching problem, also called pattern matching, is a fundamental probelem in computer science and bioinformatics. It involves finding one or more occurrences of a pattern string P within a text or query string T. We denote the length of a given string s as \\(|s|\\).\nFormally, the goal is to find all positions i in T such that:\n\\[ T[i..i+m-1] = P \\]\nThe problem underlies many practical applications, such as:\n\nSearching for DNA motifs or protein sequences in bioinformatics\nText searching in word processors or search engines\nPlagiarism detection and data mining\n\nBelow, I will present a few algorithms to solve the pattern matching problem."
+  },
+  {
+    "objectID": "posts/string-matching/index.html#the-string-matching-problem",
+    "href": "posts/string-matching/index.html#the-string-matching-problem",
+    "title": "Methods for Comparing Strings",
+    "section": "",
+    "text": "The string matching problem, also called pattern matching, is a fundamental probelem in computer science and bioinformatics. It involves finding one or more occurrences of a pattern string P within a text or query string T. We denote the length of a given string s as \\(|s|\\).\nFormally, the goal is to find all positions i in T such that:\n\\[ T[i..i+m-1] = P \\]\nThe problem underlies many practical applications, such as:\n\nSearching for DNA motifs or protein sequences in bioinformatics\nText searching in word processors or search engines\nPlagiarism detection and data mining\n\nBelow, I will present a few algorithms to solve the pattern matching problem."
+  },
+  {
+    "objectID": "posts/string-matching/index.html#naive-exact-matching",
+    "href": "posts/string-matching/index.html#naive-exact-matching",
+    "title": "Methods for Comparing Strings",
+    "section": "Naive Exact Matching",
+    "text": "Naive Exact Matching\nThe simplest, most straighforward solution is to simply align the start of pattern string P to the start of query string T and compare the characters of both strings index-wise. Once a mismatch occurs, we terminate the comparison since we already know that the two strings do not exactly match. After, we shift string P one character to the right and repeat the comparison. We do this until we reach the \\(|T| - |P| + 1\\) position where the last character of each string aligns. We illustrate this by finding the pattern brown within the text The quick brown fox:\nThe quick brown fox\nbrown brown\n brown brown\n  brown brown\n   brown brown\n    brown brown\nWe find that there is a match between the pattern and the text at the 10th position. We can write a function that implements this comparison.\n\ndef naive_exact_match(p: str, t: str) -&gt; list[int]:\n    \"\"\"Finds the starting positions where pattern (p) matches text (t)\"\"\"\n    occurrences = []\n    for i in range(len(t) - len(p) + 1):\n        match = True\n        for j in range(len(p)):\n            if t[i+j] != p[j]:\n                match = False\n                break\n        if match:\n            occurrences.append(i)\n    return occurrences\n\nPassing in our query and text in the previous example, we get the following result:\n\np = \"brown\"\nt = \"The quick brown fox\"\nnaive_exact_match(p, t)\n\n[10]"
+  },
+  {
+    "objectID": "posts/string-matching/index.html#boyer-moore-algorithm",
+    "href": "posts/string-matching/index.html#boyer-moore-algorithm",
+    "title": "Methods for Comparing Strings",
+    "section": "Boyer-Moore Algorithm",
+    "text": "Boyer-Moore Algorithm\nSimilar to the exact matching algorithm, we slide pattern string P across text string T to perform our comparison. However, we compare characters from right to left at each alignment. In each alignment, we follow the bad character rule and the good suffix rule.\n\nBad Character Rule\nUpon mismatch, skip alignments until (a) mismatch becomes a match, or (b) P moves past the mismatched character.\n\n\n\n\n\n\nExample\n\n\n\nGiven text T = GCTTCTGCTACCTTTTGCGCGCGCGCGGAA, find the occurrences where pattern P = CCTTTTGC matches using the bad character rule\n\n\n\n\nStep 1\n\n\nT: GCTTCTGCTACCTTTTGCGCGCGCGCGGAA\nP: CCTTTTGC\n\n\nShift to the right until \\(C\\) has a match. Skip 2 alignments.\n\n\nStep 2\n\n\nT: GCTTCTGCTACCTTTTGCGCGCGCGCGGAA\nP: CCTTTTGC\n\n\nMove P until it passes the current alignment. Skip 6 alignments.\n\n\nStep 3\n\n\nT: GCTTCTGCTACCTTTTGCGCGCGCGCGGAA\nP: CCTTTTGC\n\n\nAll characters have been matched!\n\n\n\n\nGood Suffix Rule\nLet t = substring matched by inner loop; skip until (a) there are no mismatches between P and t or (b) P moves past t.\n\n\nStep 1\n\n\nT: CGTGCCTACTTACTTACTTACTTACGCGAA\nP: CTTACTTAC\n\n\nShift P to the right until t has a match. Skip 3 alignments.\n\n\nStep 2\n\n\nT: CGTGCCTACTTACTTACTTACTTACGCGAA\nP: CTTACTTAC\n\n\nMove P until its prefix matches t. Skip 3 alignments.\n\n\nStep 3\n\n\nT: CGTGCCTACTTACTTACTTACTTACGCGAA\nP: CTTACTTAC\n\n\nAll characters have been matched!\n\n\n\nIn Boyer-Moore matching, both the bad character and good suffix rules return the number of skips we can do in pattern matching. The decision in which rule to use is simply the one that yields a higher number of skips. We then shift our pattern P by our number of skips, then recompute a new skip count from the two rules. We repeat the process until we either find an exact match or reach the end of text T.\nA caveat to this approach is that we need to build separate indexes from pattern P for both the bad character and good suffix rules. I won’t go into the detail of the pre-processing step, just think of it as a way to efficiently compute the number of shifts needed after evaluating an alignment. Explore the code is provided below:\n\n\nCode\ndef build_bc_table(pattern: str) -&gt; dict[str, int]:\n    \"\"\"Maps each character to its last index in the pattern\"\"\"\n    bc = {}\n    for i, c in enumerate(pattern):\n        bc[c] = i\n    return bc\n\ndef build_gs_table(pattern: str) -&gt; list[int]:\n    \"\"\"Preprocess the pattern to create good suffix shift table.\"\"\"\n    m = len(pattern)\n    gs = [0] * m\n    border_pos = [0] * (m + 1)\n\n    # Step 1: Precompute border positions\n    i = m\n    j = m + 1\n    border_pos[i] = j\n\n    while i &gt; 0:\n        while j &lt;= m and pattern[i - 1] != pattern[j - 1 if j &lt; m else 0]:\n            if gs[j - 1] == 0:\n                gs[j - 1] = j - i\n            j = border_pos[j]\n        i -= 1\n        j -= 1\n        border_pos[i] = j\n\n    # Step 2: Precompute shifts for prefixes\n    j = border_pos[0]\n    for i in range(m):\n        if gs[i] == 0:\n            gs[i] = j\n        if i == j:\n            j = border_pos[j]\n\n    return gs\n\n\nWe can now combine both rules to implement the Boyer-Moore algorithm.\n\ndef boyer_moore_search(text: str, pattern: str):\n    \"\"\"Boyer-Moore search using the Bad Character and Good Suffix heuristics\"\"\"\n    n = len(text)\n    m = len(pattern)\n    if m == 0 or n == 0 or m &gt; n:\n        return []\n\n    # Precompute indexes\n    bc = build_bc_table(pattern)\n    gs = build_gs_table(pattern)\n\n    matches = []\n    shift = 0\n\n    while shift &lt;= n - m:\n        # Start from right-most position of current alignment\n        j = m-1\n\n        # Compare from right to left\n        while j &gt;= 0 and pattern[j] == text[shift+j]:\n            j -= 1\n\n        if j &lt; 0:\n            # Match found at index = shift\n            matches.append(shift)\n            # Shift so that next character after matched substring aligns\n            shift += gs[0] if m &gt; 1 else 1\n            print(f\"MATCH: shifting pattern to start at index {shift-1}\")\n        else:\n            # Compute shifts\n            bc_shift = j - bc.get(text[shift+j], -1)\n            gs_shift = gs[j] if j &lt; m - 1 else 1\n\n\n            shift += max(bc_shift, gs_shift)\n            if bc_shift &gt; gs_shift:\n                print(f\"Using Bad Character rule: shifting by {shift} positions\")\n            else:\n                print(f\"Using Good Suffix rule: shifting by {shift} positions\")\n\n    return matches        \n\n\ntext = \"AGTCGATGGCATTGATCGATTTTAGGCATTAGATCA\"\npattern = \"GGCAT\"\nboyer_moore_search(text, pattern)\n\nUsing Bad Character rule: shifting by 3 positions\nUsing Bad Character rule: shifting by 6 positions\nUsing Good Suffix rule: shifting by 7 positions\nMATCH: shifting pattern to start at index 10\nUsing Good Suffix rule: shifting by 15 positions\nUsing Good Suffix rule: shifting by 19 positions\nUsing Good Suffix rule: shifting by 20 positions\nUsing Bad Character rule: shifting by 23 positions\nUsing Good Suffix rule: shifting by 24 positions\nMATCH: shifting pattern to start at index 27\nUsing Good Suffix rule: shifting by 29 positions\nUsing Good Suffix rule: shifting by 33 positions\n\n\n[7, 24]\n\n\nIn the example, the bad character heuristic always produced the most number of shifts for all alignment comparisons. The function detects that the pattern occurs at positions 7 and 24 of our text. Let us check if that is correct.\n\nprint(\"First match:\", text[7:7+len(pattern)])\nprint(\"Second match:\", text[24:24+len(pattern)])\n\nFirst match: GGCAT\nSecond match: GGCAT"
   }
 ]

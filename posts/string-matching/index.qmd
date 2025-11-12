@@ -1,0 +1,306 @@
+---
+title: "Methods for Comparing Strings"
+date: today
+description: Implementing a few string matching algorithms used in bioinformatics
+#image: assets/skew_diagram.png
+categories: [algorithms, computer-science, bioinformatics]
+date-modified: today
+jupyter: python3
+execute:
+    warning: false
+    message: false
+    cache: false
+filters:
+  - highlight-text
+---
+
+## The String Matching Problem
+
+The string matching problem, also called **pattern matching**, is a fundamental probelem in computer science and bioinformatics.
+It involves finding one or more occurrences of a pattern string _P_ within a text or query string _T_.
+We denote the length of a given string _s_ as $|s|$.
+
+Formally, the goal is to find all positions _i_ in _T_ such that:
+
+$$ T[i..i+m-1] = P $$
+
+The problem underlies many practical applications, such as:
+
+- Searching for DNA motifs or protein sequences in bioinformatics
+- Text searching in word processors or search engines
+- Plagiarism detection and data mining
+
+Below, I will present a few algorithms to solve the pattern matching problem.
+
+## Naive Exact Matching
+
+The simplest, most straighforward solution is to simply align the start of pattern string _P_ to the start of 
+query string _T_ and compare the characters of both strings index-wise. Once a mismatch occurs, we terminate the comparison
+since we already know that the two strings do not exactly match. After, we shift string _P_ one character to the right
+and repeat the comparison. We do this until we reach the $|T| - |P| + 1$ position where the last character of each string aligns.
+We illustrate this by finding the pattern [_brown_]{color="brown"} within the text [_The quick brown fox_]{color="#517699"}:
+
+```
+The quick brown fox
+brown brown
+ brown brown
+  brown brown
+   brown brown
+    brown brown
+```
+
+We find that there is a match between the pattern and the text at the 10^th^ position. We can write a function that implements
+this comparison.
+
+```{python}
+#| label: naive-exact-match
+
+def naive_exact_match(p: str, t: str) -> list[int]:
+    """Finds the starting positions where pattern (p) matches text (t)"""
+    occurrences = []
+    for i in range(len(t) - len(p) + 1):
+        match = True
+        for j in range(len(p)):
+            if t[i+j] != p[j]:
+                match = False
+                break
+        if match:
+            occurrences.append(i)
+    return occurrences
+```
+
+Passing in our query and text in the previous example, we get the following result:
+
+```{python}
+#| label: naive-exact-match-example
+p = "brown"
+t = "The quick brown fox"
+naive_exact_match(p, t)
+```
+
+## Boyer-Moore Algorithm
+
+Similar to the exact matching algorithm, we slide pattern string _P_ across text string _T_ to perform our comparison.
+However, we compare characters from right to left at each alignment. In each alignment, we follow the _bad character rule_
+and the _good suffix_ rule.
+
+### Bad Character Rule
+
+Upon mismatch, skip alignments until (a) mismatch becomes a match, or (b) _P_ moves past the mismatched character.
+
+:::{.callout-tip title="Example"}
+Given text _T_ = _GCTTCTGCTACCTTTTGCGCGCGCGCGGAA_, find the occurrences where pattern _P_ = _CCTTTTGC_ matches using the **bad character rule**
+:::
+
+:::: {.grid}
+
+:::{.g-col-2 style="text-align: center; margin: auto; width: 100%"}
+[**Step 1**]{style="border: 1px solid black; padding: 0.25em 1em"}
+:::
+
+:::{.g-col-6}
+_T_: GCTT[C]{color="orange"}[TGC]{color="green"}TACCTTTTGCGCGCGCGCGGAA \
+_P_: CCTT[T]{color="orange"}[TGC]{color="green"}
+:::
+
+:::{.g-col-4}
+Shift to the right until $C$ has a match. Skip 2 alignments.
+:::
+
+:::{.g-col-2 style="text-align: center; margin: auto; width: 100%"}
+[**Step 2**]{style="border: 1px solid black; padding: 0.25em 1em"}
+:::
+
+:::{.g-col-6}
+
+_T_: GCTTCTGCT[A]{color="orange"}[C]{color="green"}CTTTTGCGCGCGCGCGGAA \
+_P_: <span style="display:inline-block; width:3.5ch;"></span>CCTTTT[G]{color="orange"}[C]{color="green"}
+:::
+
+:::{.g-col-4}
+Move _P_ until it passes the current alignment. Skip 6 alignments.
+:::
+
+:::{.g-col-2 style="text-align: center; margin: auto; width: 100%"}
+[**Step 3**]{style="border: 1px solid black; padding: 0.25em 1em"}
+:::
+
+:::{.g-col-6}
+
+_T_: GCTTCTGCTA[CCTTTTGC]{color="green"}GCGCGCGCGGAA \
+_P_: <span style="display:inline-block; width:11.5ch;"></span>[CCTTTTGC]{color="green"}
+:::
+
+:::{.g-col-4}
+All characters have been matched!
+:::
+
+::::
+
+### Good Suffix Rule
+
+Let _t_ = substring matched by inner loop; skip until (a) there are no mismatches between _P_ and _t_ or (b) _P_
+moves past _t_.
+
+:::: {.grid}
+
+:::{.g-col-2 style="text-align: center; margin: auto; width: 100%"}
+[**Step 1**]{style="border: 1px solid black; padding: 0.25em 1em"}
+:::
+
+:::{.g-col-6}
+_T_: CGTGC[C]{color="orange"}[TAC]{color="green"}TTACTTACTTACTTACGCGAA \
+_P_: CTTAC[T]{color="orange"}[TAC]{color="green"}
+:::
+
+:::{.g-col-4}
+Shift _P_ to the right until _t_ has a match. Skip 3 alignments.
+:::
+
+:::{.g-col-2 style="text-align: center; margin: auto; width: 100%"}
+[**Step 2**]{style="border: 1px solid black; padding: 0.25em 1em"}
+:::
+
+:::{.g-col-6}
+
+_T_: CGTGC[C]{color="orange"}[TAC]{color="green"}TTACTTACTTACTTACGCGAA \
+_P_: []{style="display:inline-block; width:5ch;"}C[T]{color="orange"}[TACTTAC]{color="green"}
+
+:::
+
+:::{.g-col-4}
+Move _P_ until its prefix matches _t_. Skip 3 alignments.
+:::
+
+:::{.g-col-2 style="text-align: center; margin: auto; width: 100%"}
+[**Step 3**]{style="border: 1px solid black; padding: 0.25em 1em"}
+:::
+
+:::{.g-col-6}
+
+_T_: CGTGCCTA[CTTACTTAC]{color="green"}TTACTTACGCGAA \
+_P_: []{style="display:inline-block; width:9ch;"}[CTTACTTAC]{color="green"}
+:::
+
+:::{.g-col-4}
+All characters have been matched!
+:::
+
+::::
+
+* * *
+
+
+In Boyer-Moore matching, both the _bad character_ and _good suffix_ rules return the number of skips we can do in pattern matching.
+The decision in which rule to use is simply the one that yields a higher number of skips. We then shift our pattern _P_ by our
+number of skips, then recompute a new skip count from the two rules. We repeat the process until we either find an exact match or
+reach the end of text _T_.
+
+A caveat to this approach is that we need to build separate indexes from pattern _P_ for both the _bad character_ and _good suffix_ rules.
+I won't go into the detail of the pre-processing step, just think of it as a way to efficiently compute the number of shifts needed
+after evaluating an alignment. Explore the code is provided below:
+
+```{python}
+#| label: bm-preprocessing
+#| code-fold: true
+def build_bc_table(pattern: str) -> dict[str, int]:
+    """Maps each character to its last index in the pattern"""
+    bc = {}
+    for i, c in enumerate(pattern):
+        bc[c] = i
+    return bc
+
+def build_gs_table(pattern: str) -> list[int]:
+    """Preprocess the pattern to create good suffix shift table."""
+    m = len(pattern)
+    gs = [0] * m
+    border_pos = [0] * (m + 1)
+
+    # Step 1: Precompute border positions
+    i = m
+    j = m + 1
+    border_pos[i] = j
+
+    while i > 0:
+        while j <= m and pattern[i - 1] != pattern[j - 1 if j < m else 0]:
+            if gs[j - 1] == 0:
+                gs[j - 1] = j - i
+            j = border_pos[j]
+        i -= 1
+        j -= 1
+        border_pos[i] = j
+
+    # Step 2: Precompute shifts for prefixes
+    j = border_pos[0]
+    for i in range(m):
+        if gs[i] == 0:
+            gs[i] = j
+        if i == j:
+            j = border_pos[j]
+
+    return gs
+```
+
+We can now combine both rules to implement the Boyer-Moore algorithm.
+
+```{python}
+#| label: boyer-moore-function
+def boyer_moore_search(text: str, pattern: str):
+    """Boyer-Moore search using the Bad Character and Good Suffix heuristics"""
+    n = len(text)
+    m = len(pattern)
+    if m == 0 or n == 0 or m > n:
+        return []
+
+    # Precompute indexes
+    bc = build_bc_table(pattern)
+    gs = build_gs_table(pattern)
+
+    matches = []
+    shift = 0
+
+    while shift <= n - m:
+        # Start from right-most position of current alignment
+        j = m-1
+
+        # Compare from right to left
+        while j >= 0 and pattern[j] == text[shift+j]:
+            j -= 1
+
+        if j < 0:
+            # Match found at index = shift
+            matches.append(shift)
+            # Shift so that next character after matched substring aligns
+            shift += gs[0] if m > 1 else 1
+            print(f"MATCH: shifting pattern to start at index {shift-1}")
+        else:
+            # Compute shifts
+            bc_shift = j - bc.get(text[shift+j], -1)
+            gs_shift = gs[j] if j < m - 1 else 1
+
+
+            shift += max(bc_shift, gs_shift)
+            if bc_shift > gs_shift:
+                print(f"Using Bad Character rule: shifting by {shift} positions")
+            else:
+                print(f"Using Good Suffix rule: shifting by {shift} positions")
+
+    return matches        
+```
+
+```{python}
+#| label: boyer-moore-example
+text = "AGTCGATGGCATTGATCGATTTTAGGCATTAGATCA"
+pattern = "GGCAT"
+boyer_moore_search(text, pattern)
+```
+
+In the example, the _bad character_ heuristic always produced the most number of shifts for all alignment comparisons.
+The function detects that the pattern occurs at positions 7 and 24 of our text. Let us check if that is correct.
+
+```{python}
+#| label: booyer-moore-verification
+print("First match:", text[7:7+len(pattern)])
+print("Second match:", text[24:24+len(pattern)])
+
+```
