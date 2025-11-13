@@ -1,10 +1,10 @@
 ---
 title: "Finding _ori_"
-date: today
+date: "2025-11-11"
 description: Exploring genome properties to elucidate the origin of replication
 image: assets/skew_diagram.png
 categories: [genomics, bioinformatics]
-date-modified: today
+date-modified: "2025-11-11"
 jupyter: python3
 execute:
     warning: false

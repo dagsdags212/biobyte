@@ -1,9 +1,9 @@
 ---
 title: "Alignment-free Genome Comparisons"
-date: today
+date: "2025-11-10"
 description: Assess sequence similarity between genomes using _k_-mer composition
 categories: [genomics, bioinformatics]
-date-modified: today
+date-modified: "2025-11-10"
 jupyter: python3
 execute:
     warning: false
