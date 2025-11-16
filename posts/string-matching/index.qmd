@@ -2,7 +2,7 @@
 title: "Methods for Comparing Strings"
 date: today
 description: Implementing a few string matching algorithms used in bioinformatics
-#image: assets/skew_diagram.png
+image: cover.png
 categories: [algorithms, computer-science, bioinformatics]
 date-modified: today
 jupyter: python3
