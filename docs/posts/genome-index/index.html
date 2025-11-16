@@ -7,9 +7,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="dcterms.date" content="2025-11-16">
-<meta name="description" content="Exploring genome properties to elucidate the origin of replication">
+<meta name="description" content="Efficiently querying genomic sequences for patterns using a K-mer index">
 
-<title>Finding ori – biobyte</title>
+<title>Indexing Genomes – biobyte</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -60,7 +60,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </style>
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.1/jquery.min.js" integrity="sha512-bLT0Qm9VnAYZDflyKcBaQ2gg0hSYNQrJ8RilYldYQ1FxQYoCLtUjuuRuZo+fjqhx/qtq/1itJ0C2ejDxltZVFg==" crossorigin="anonymous"></script><script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../../site_libs/quarto-nav/quarto-nav.js"></script>
 <script src="../../site_libs/quarto-nav/headroom.min.js"></script>
 <script src="../../site_libs/clipboard/clipboard.min.js"></script>
 <script src="../../site_libs/quarto-search/autocomplete.umd.js"></script>
@@ -109,9 +109,9 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     "search-label": "Search"
   }
 }</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" integrity="sha512-c3Nl8+7g4LMSTdrm621y7kf9v3SDPnhxLNhcjFJbKECVnmZHTdo+IRO05sNLTH/D3vA6u1X32ehoLC7WFVdheg==" crossorigin="anonymous"></script>
-
-<script type="application/javascript">define('jquery', [],function() {return window.jQuery;})</script>
+<script src="../../site_libs/quarto-diagram/mermaid.min.js"></script>
+<script src="../../site_libs/quarto-diagram/mermaid-init.js"></script>
+<link href="../../site_libs/quarto-diagram/mermaid.css" rel="stylesheet">
 
   <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
@@ -345,15 +345,15 @@ window.Quarto = {
 <header id="title-block-header" class="quarto-title-block default page-columns page-full">
   <div class="quarto-title-banner page-columns page-full">
     <div class="quarto-title column-body">
-      <h1 class="title">Finding <em>ori</em></h1>
+      <h1 class="title">Indexing Genomes</h1>
                   <div>
         <div class="description">
-          Exploring genome properties to elucidate the origin of replication
+          Efficiently querying genomic sequences for patterns using a <em>K</em>-mer index
         </div>
       </div>
                           <div class="quarto-categories">
-                <div class="quarto-category">genomics</div>
                 <div class="quarto-category">bioinformatics</div>
+                <div class="quarto-category">data-structures</div>
               </div>
                   </div>
   </div>
@@ -387,11 +387,13 @@ window.Quarto = {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#the-origin-of-replication" id="toc-the-origin-of-replication" class="nav-link active" data-scroll-target="#the-origin-of-replication">The Origin of Replication</a></li>
-  <li><a href="#genome-dataset" id="toc-genome-dataset" class="nav-link" data-scroll-target="#genome-dataset">Genome Dataset</a></li>
-  <li><a href="#expected-k-mer-distribution" id="toc-expected-k-mer-distribution" class="nav-link" data-scroll-target="#expected-k-mer-distribution">Expected K-mer Distribution</a></li>
-  <li><a href="#frequent-words" id="toc-frequent-words" class="nav-link" data-scroll-target="#frequent-words">Frequent Words</a></li>
-  <li><a href="#asymmetry-of-replication" id="toc-asymmetry-of-replication" class="nav-link" data-scroll-target="#asymmetry-of-replication">Asymmetry of Replication</a></li>
+  <li><a href="#k-mer-index" id="toc-k-mer-index" class="nav-link active" data-scroll-target="#k-mer-index">K-mer Index</a>
+  <ul class="collapse">
+  <li><a href="#building-the-index" id="toc-building-the-index" class="nav-link" data-scroll-target="#building-the-index">Building the Index</a></li>
+  <li><a href="#querying-the-index" id="toc-querying-the-index" class="nav-link" data-scroll-target="#querying-the-index">Querying the Index</a></li>
+  <li><a href="#k-mer-index-class" id="toc-k-mer-index-class" class="nav-link" data-scroll-target="#k-mer-index-class"><em>K</em>-mer Index Class</a></li>
+  <li><a href="#indexing-the-poliovirus-genome" id="toc-indexing-the-poliovirus-genome" class="nav-link" data-scroll-target="#indexing-the-poliovirus-genome">Indexing the Poliovirus Genome</a></li>
+  </ul></li>
   </ul>
 </nav>
     </div>
@@ -403,232 +405,231 @@ window.Quarto = {
 
 
 
-<section id="the-origin-of-replication" class="level2">
-<h2 class="anchored" data-anchor-id="the-origin-of-replication">The Origin of Replication</h2>
-<p>The <strong>origin of replication</strong> (<em>ori</em>) is a specific DNA sequence at which DNA replication begins. It is the genomic region where the cellular machinery assembles and starts to synthesize new DNA strands. Due to its importance, there are experimental methods to elucidate the position of the ori-site, although this process takes time, effort, and expertise.</p>
-<p>In recent years, 2nd- and 3rd-generation sequencing platforms have drastically reduced the time and cost to assemble draft genomes. Short sequencing reads allows for good genome depth while long reads reduce the uncertainty when building contigs from shorter sequences by increasing coverage. As a computational biologist, I would want to leverage this fact by finding ways to amortize the vast amounts of genomes published online.</p>
-<p>Going back to the problem of <em>ori</em> finding, can we build heuristics for finding this region using only the genome sequence as input? We will dive into the ideas from Compeau’s and Pevzner’s book entitled <em>Bioinformatics Algorithms: An Active Learing Approach</em> and implement the algorithms in code.</p>
-</section>
-<section id="genome-dataset" class="level2">
-<h2 class="anchored" data-anchor-id="genome-dataset">Genome Dataset</h2>
-<p>The goal is to develop heuristics that can be used to find the <em>ori</em> of bacterial genomes from sequence data alone. I will be using the <em>Vibrio cholera</em> genome as an example. First, let’s explore the properties of the genome by loading it into memory and computing a few properties such as length, base composition, and GC content.</p>
-<div id="load-genome" class="cell" data-execution_count="2">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load genome</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>genome_fp <span class="op">=</span> <span class="st">"data/Vibrio_cholerae.txt"</span></span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="cf">with</span> <span class="bu">open</span>(genome_fp, <span class="st">"r"</span>) <span class="im">as</span> fh:</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    genome <span class="op">=</span> fh.read()</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute length</span></span>
-<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>genome_length <span class="op">=</span> <span class="bu">len</span>(genome)</span>
-<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute base frequencies</span></span>
-<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>base_freqs <span class="op">=</span> {base: genome.count(base) <span class="cf">for</span> base <span class="kw">in</span> <span class="bu">set</span>(genome)}</span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute GC content</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>gc_content <span class="op">=</span> <span class="bu">round</span>((base_freqs[<span class="st">'G'</span>] <span class="op">+</span> base_freqs[<span class="st">'C'</span>]) <span class="op">/</span> genome_length, <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<p>Genome indexes are <strong>pre-computed data structures</strong> that allow extremely fast lookup, alignment, or querying of sequences against a reference genome. Instead of scanning the entire genome for every query, we create an index once, store it on disk, and reuse it for many operations.</p>
+<section id="k-mer-index" class="level2 page-columns page-full">
+<h2 class="anchored" data-anchor-id="k-mer-index">K-mer Index</h2>
+<section id="building-the-index" class="level3">
+<h3 class="anchored" data-anchor-id="building-the-index">Building the Index</h3>
+<p>A simple implementation is the <strong>k-mer</strong> index that subdivides a reference genome into <em>k</em>-mers and stores the positions for each occurrence of a particular <em>k</em>-mer. As an example, consider sequence the following sequence <em>G</em>:</p>
+<p><span class="math display">\[ G = \text{ATCGATCGA} \]</span></p>
+<p>We can build a <em>5</em>-mer index by first computing the <em>5</em>-mer composition of the sequence <em>G</em>:</p>
+<div id="kmer-composition" class="cell" data-execution_count="2">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> composition(genome: <span class="bu">str</span>, k: <span class="bu">int</span>) <span class="op">-&gt;</span> <span class="bu">list</span>[<span class="bu">str</span>]:</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Extract all k-mers from a given genome sequence"""</span></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>    kmers <span class="op">=</span> []</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="bu">len</span>(genome) <span class="op">-</span> k <span class="op">+</span> <span class="dv">1</span>):</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>        kmers.append(genome[i:i<span class="op">+</span>k])</span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> kmers</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<div id="load-genome-display" class="cell" data-execution_count="3">
+<div id="cell-compute-kmer-composition" class="cell" data-execution_count="3">
+<div id="compute-kmer-composition" class="cell-output cell-output-display" data-execution_count="3">
+<pre><code>['ATCGA', 'TCGAT', 'CGATC', 'GATCG', 'ATCGA']</code></pre>
+</div>
+</div>
+<p>We sort the <em>k</em>-mers by lexicographic order, then map the positions where the <em>k</em>-mer occurs within the genome. Sorting allows us to query the index in log-linear time using binary search. In Python, we can represent the index as a dictionary:</p>
+<div id="1135b676" class="cell" data-execution_count="4">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> build_index(genome: <span class="bu">str</span>, k: <span class="bu">int</span>):</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Builds a k-mer index for the given sequence"""</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    gidx <span class="op">=</span> {}</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="bu">len</span>(genome) <span class="op">-</span> k <span class="op">+</span> <span class="dv">1</span>):</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>        kmer <span class="op">=</span> genome[i:i<span class="op">+</span>k]</span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> kmer <span class="kw">in</span> gidx:</span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>            gidx[kmer].append(i)</span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>            gidx[kmer] <span class="op">=</span> [i]</span>
+<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>    </span>
+<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> {k:v <span class="cf">for</span> k, v <span class="kw">in</span> <span class="bu">sorted</span>(gidx.items())}</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div id="cell-compute-kmer-index" class="cell" data-execution_count="5">
+<div id="compute-kmer-index" class="cell-output cell-output-display" data-execution_count="5">
+<pre><code>{'ATCGA': [0, 4], 'CGATC': [2], 'GATCG': [3], 'TCGAT': [1]}</code></pre>
+</div>
+</div>
+<p>Notice that we only store the first position where each <em>k</em>-mer matches a substring of genome <em>G</em>. This is a memory-efficient way to represent the index.</p>
+</section>
+<section id="querying-the-index" class="level3">
+<h3 class="anchored" data-anchor-id="querying-the-index">Querying the Index</h3>
+<p>Given query string <span class="math inline">\(Q = \text{TCGATC}\)</span>, how would we know if the given query occurs as a substring of genome <em>G</em>? We use our pre-built index! Since our implementation uses a hashmap (or dictionary) containing keys of length <em>k</em>, we can only search the index using <em>k</em>-length substrings of <em>Q</em>. As a consequence, less character comparisons are needed to detect <em>potetential</em> matches of <em>Q</em> as a substring of <em>G</em>.</p>
+<div id="c97cb1f6" class="cell" data-execution_count="6">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Build genome 5-mer index</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>k <span class="op">=</span> <span class="dv">5</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>genome_index <span class="op">=</span> build_index(genome<span class="op">=</span>G, k<span class="op">=</span>k)</span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>Q <span class="op">=</span> <span class="st">"TCGATC"</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>match <span class="op">=</span> genome_index.get(Q[:k])</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="cf">if</span> match <span class="op">!=</span> <span class="op">-</span><span class="dv">1</span>:</span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="ss">f"Match found at position(s) </span><span class="sc">{</span>match<span class="sc">}</span><span class="ss">"</span>)</span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="cf">else</span>:</span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">"No match found"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Genome length: 1108250
-Base counts: {'T': 294711, 'G': 256024, 'C': 263573, 'A': 293942}
-GC content: 47.00%</code></pre>
+<pre><code>Match found at position(s) [1]</code></pre>
+</div>
+</div>
+<p>Notice that we only match the first <em>k</em> characters of the query string against the index. If a mismatch were to occur in the 6<sup>th</sup> position of the sequene, we would falsely report an exact match. To prevent this from happening, we would need to perform a <strong>validation</strong> step to verify that the remaining charcters for both <em>Q</em> and <em>G</em> match.</p>
+<div id="cell-query-validation" class="cell" data-execution_count="7">
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>Q <span class="op">=</span> <span class="st">"TCGATC"</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> query(q: <span class="bu">str</span>, g: <span class="bu">str</span>, index: <span class="bu">dict</span>, k: <span class="bu">int</span>) <span class="op">-&gt;</span> <span class="bu">list</span>[<span class="bu">int</span>]:</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Search a query string against a pre-built k-mer index"""</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>    hits <span class="op">=</span> []</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>    match <span class="op">=</span> index.get(q[:k])</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> match:</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> m <span class="kw">in</span> match:</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> q[k:] <span class="op">==</span> g[m<span class="op">+</span>k:m<span class="op">+</span><span class="bu">len</span>(q)]:</span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a>                hits.append(m)</span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-12"><a href="#cb7-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> hits</span>
+<span id="cb7-13"><a href="#cb7-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-14"><a href="#cb7-14" aria-hidden="true" tabindex="-1"></a>query(Q, G, genome_index, k)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="query-validation" class="cell-output cell-output-display" data-execution_count="7">
+<pre><code>[1]</code></pre>
+</div>
+</div>
+<p>Let’s check if our function works as expected by introducing a mismatch at the 6<sup>th</sup> position. We expect the function to return an empty list.</p>
+<div id="cell-query-validation-mismatch" class="cell" data-execution_count="8">
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>Q <span class="op">=</span> <span class="st">"TCGATG"</span></span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>query(Q, G, genome_index, k)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div id="query-validation-mismatch" class="cell-output cell-output-display" data-execution_count="8">
+<pre><code>[]</code></pre>
 </div>
 </div>
 </section>
-<section id="expected-k-mer-distribution" class="level2 page-columns page-full">
-<h2 class="anchored" data-anchor-id="expected-k-mer-distribution">Expected K-mer Distribution</h2>
-<p>If we were to assume that the occurrence of DNA bases are uniformly distributed across a genome, the probability of observing a particular nucleotide at any position is given as:</p>
-<p><span class="math display">\[ P(A) = P(T) = P(G) = P(G) = \frac{1}{4} \]</span></p>
-<p>Under this model, the occurrence of nucleotide bases are assumed to be independent. Hence the probability of a sequence of <em>k</em> bases is simply the product of probabilities of each base:</p>
-<p><span class="math display">\[ P(\text{k-mer}) = (\frac{1}{4})^k \]</span></p>
-<p>We can then compute the expected frequncy of the <em>k</em>-mer using the formula:</p>
-<p><span class="math display">\[ E = (L-k+1) \times (\frac{1}{4})^k \]</span></p>
+<section id="k-mer-index-class" class="level3">
+<h3 class="anchored" data-anchor-id="k-mer-index-class"><em>K</em>-mer Index Class</h3>
+<p>The <code>build_index</code> function is a pre-requisite to using the <code>query</code> function. Since their is an order to how we call these subroutines, it would make sense to group these functionality into a single Python class.</p>
+<div id="kmer-index-class" class="cell" data-execution_count="9">
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a><span class="kw">class</span> Index(<span class="bu">object</span>):</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>, genome: <span class="bu">str</span>, k: <span class="bu">int</span>) <span class="op">-&gt;</span> <span class="va">None</span>:</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.k <span class="op">=</span> k</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.genome <span class="op">=</span> genome</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>        <span class="va">self</span>.index <span class="op">=</span> <span class="va">self</span>._build(genome, k)</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> _build(<span class="va">self</span>, genome: <span class="bu">str</span>, k: <span class="bu">int</span>) <span class="op">-&gt;</span> <span class="bu">dict</span>:</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>        <span class="co">"""Generate a k-mer index from a genome sequence"""</span></span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>        index <span class="op">=</span> {}</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(<span class="bu">len</span>(genome) <span class="op">-</span> k <span class="op">+</span> <span class="dv">1</span>):</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>            kmer <span class="op">=</span> genome[i:i<span class="op">+</span>k]</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> kmer <span class="kw">in</span> index:</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>                index[kmer].append(i)</span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>            <span class="cf">else</span>:</span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>                index[kmer] <span class="op">=</span> [i]</span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> {k: v <span class="cf">for</span> k, v <span class="kw">in</span> <span class="bu">sorted</span>(index.items())}</span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>    <span class="kw">def</span> query(<span class="va">self</span>, query: <span class="bu">str</span>) <span class="op">-&gt;</span> <span class="bu">list</span>[<span class="bu">int</span>]:</span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>        <span class="co">"""Return a list of positions where the query exactly </span></span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a><span class="co">        matches a substring of the genome"""</span></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a>        hits <span class="op">=</span> []</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a>        match <span class="op">=</span> <span class="va">self</span>.index.get(query[:<span class="va">self</span>.k])</span>
+<span id="cb11-24"><a href="#cb11-24" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> match:</span>
+<span id="cb11-25"><a href="#cb11-25" aria-hidden="true" tabindex="-1"></a>            <span class="cf">for</span> m <span class="kw">in</span> match:</span>
+<span id="cb11-26"><a href="#cb11-26" aria-hidden="true" tabindex="-1"></a>                <span class="cf">if</span> query[<span class="va">self</span>.k:] <span class="op">==</span> <span class="va">self</span>.genome[m<span class="op">+</span><span class="va">self</span>.k : m <span class="op">+</span> <span class="bu">len</span>(query)]:</span>
+<span id="cb11-27"><a href="#cb11-27" aria-hidden="true" tabindex="-1"></a>                    hits.append(m)</span>
+<span id="cb11-28"><a href="#cb11-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-29"><a href="#cb11-29" aria-hidden="true" tabindex="-1"></a>        <span class="cf">return</span> hits</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="indexing-the-poliovirus-genome" class="level3 page-columns page-full">
+<h3 class="anchored" data-anchor-id="indexing-the-poliovirus-genome">Indexing the Poliovirus Genome</h3>
+<p>As a practical example, I downloaded the reference genome of the Poliovirus from NCBI along with a subset of sequencing reads. Let’s build a <em>9</em>-mer index, query the reads against the index, then summarize our results:</p>
 
 <div class="no-row-height column-margin column-container"><div class="">
-<p>L = genome length</p>
-</div></div><div class="callout callout-style-default callout-tip callout-titled" title="Example">
-<div class="callout-header d-flex align-content-center">
-<div class="callout-icon-container">
-<i class="callout-icon"></i>
+<p>Genome accession: <a href="https://www.ncbi.nlm.nih.gov/nuccore/NC_002058.3">NC_002058.3</a><br>
+Read accession: <a href="https://trace.ncbi.nlm.nih.gov/Traces/?view=run_browser&amp;acc=SRR27242477&amp;display=metadata">SRR27242477</a></p>
+</div></div><div class="cell" data-layout-align="default">
+<div class="cell-output-display">
+<div>
+<p></p><figure class="figure"><p></p>
+<div>
+<pre class="mermaid mermaid-js">flowchart LR
+    fasta("FASTA")
+    fastq("FASTQ")
+    fasta--&gt;|load| genome["Genome"] --&gt;|build| index("Index")
+    fastq--&gt;|load| reads["Reads"] --&gt;|query| index
+    index --&gt;|validate| hits["hits"]
+
+</pre>
 </div>
-<div class="callout-title-container flex-fill">
-Example
-</div>
-</div>
-<div class="callout-body-container callout-body">
-<p>How many <em>ATGCG</em> substrings are expected to occur in the <em>V. cholerae</em> genome?</p>
-<p><span class="math display">\[ E = (1108250 - 5 + 1) \times (\frac{1}{4})^5 = 1082 \]</span></p>
-<p>Under the null distribution, we expect any 5-mer to occur 1082 times.</p>
-</div>
-</div>
-</section>
-<section id="frequent-words" class="level2">
-<h2 class="anchored" data-anchor-id="frequent-words">Frequent Words</h2>
-<p>In order to initate replication, DNA polymerase must somehow recognize and bind to the <em>ori</em>. This interaction is mediated by <strong>motifs</strong>, DNA sequences that have a higher affinity towards the binding domain of proteins. We can start to identify these motifs by finding the most frequent substrings of length <em>k</em>.</p>
-<div id="most-frequent-kmer" class="cell" data-execution_count="4">
-<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> most_frequent_kmer(genome: <span class="bu">str</span>, k: <span class="bu">int</span>):</span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Compute k-mer frequencies and return k-mer set with the highest counts"""</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>    L <span class="op">=</span> <span class="bu">len</span>(genome)</span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Compute frequncies</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true" tabindex="-1"></a>    kmer_counts <span class="op">=</span> {}</span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> i <span class="kw">in</span> <span class="bu">range</span>(L<span class="op">-</span>k<span class="op">+</span><span class="dv">1</span>):</span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true" tabindex="-1"></a>        kmer <span class="op">=</span> genome[i:i<span class="op">+</span>k]</span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> kmer <span class="kw">in</span> kmer_counts:</span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true" tabindex="-1"></a>            kmer_counts[kmer] <span class="op">+=</span> <span class="dv">1</span></span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true" tabindex="-1"></a>            kmer_counts[kmer] <span class="op">=</span> <span class="dv">1</span></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-14"><a href="#cb3-14" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Compute maximum count</span></span>
-<span id="cb3-15"><a href="#cb3-15" aria-hidden="true" tabindex="-1"></a>    max_count <span class="op">=</span> <span class="bu">max</span>(kmer_counts.values())</span>
-<span id="cb3-16"><a href="#cb3-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-17"><a href="#cb3-17" aria-hidden="true" tabindex="-1"></a>    <span class="co"># Retain k-mers with counts equal to max_count</span></span>
-<span id="cb3-18"><a href="#cb3-18" aria-hidden="true" tabindex="-1"></a>    max_kmers <span class="op">=</span> []</span>
-<span id="cb3-19"><a href="#cb3-19" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> kmer, count <span class="kw">in</span> kmer_counts.items():</span>
-<span id="cb3-20"><a href="#cb3-20" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> count <span class="op">==</span> max_count:</span>
-<span id="cb3-21"><a href="#cb3-21" aria-hidden="true" tabindex="-1"></a>            max_kmers.append(kmer)</span>
-<span id="cb3-22"><a href="#cb3-22" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb3-23"><a href="#cb3-23" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> max_kmers</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<div id="cell-fig-max-kmer-counts" class="cell" data-execution_count="5">
-<div class="cell-output cell-output-display">
-<div id="fig-max-kmer-counts" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-max-kmer-counts-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-max-kmer-counts-output-1.png" class="img-fluid figure-img">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-max-kmer-counts-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;1: Number of most-frequent <em>k</em>-mers for k = 1…20
-</figcaption>
-</figure>
+<p></p></figure><p></p>
 </div>
 </div>
 </div>
-<p>At <span class="math inline">\(k = 11\)</span>, we find 5 most-frequent <em>k</em>-mers. Is this result surprising? Let’s first check the sequences of the 11-mers.</p>
-<div class="cell" data-execution_count="6">
-<div id="tbl-11mer-seqs" class="cell quarto-float quarto-figure quarto-figure-center anchored" data-execution_count="6">
-<figure class="quarto-float quarto-float-tbl figure">
-<figcaption class="quarto-float-caption-top quarto-float-caption quarto-float-tbl quarto-uncaptioned" id="tbl-11mer-seqs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Table&nbsp;1
-</figcaption>
-<div aria-describedby="tbl-11mer-seqs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<div class="cell-output cell-output-display" data-execution_count="6">
-<div><style>
-.dataframe > thead > tr,
-.dataframe > tbody > tr {
-  text-align: right;
-  white-space: pre-wrap;
-}
-</style>
-<small>shape: (5, 2)</small>
-<table class="dataframe do-not-create-environment caption-top table table-sm table-striped small" data-quarto-postprocess="true" data-border="1">
-<thead>
-<tr class="header">
-<th data-quarto-table-cell-role="th">n</th>
-<th data-quarto-table-cell-role="th">sequence</th>
-</tr>
-<tr class="even">
-<th>i64</th>
-<th>str</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>1</td>
-<td>"AGGCGTTTGTT"</td>
-</tr>
-<tr class="even">
-<td>2</td>
-<td>"GGGACTGGAAA"</td>
-</tr>
-<tr class="odd">
-<td>3</td>
-<td>"GGACTGGAAAC"</td>
-</tr>
-<tr class="even">
-<td>4</td>
-<td>"GACTGGAAACG"</td>
-</tr>
-<tr class="odd">
-<td>5</td>
-<td>"ACTGGAAACGC"</td>
-</tr>
-</tbody>
-</table>
+<div id="helper-functions" class="cell" data-execution_count="10">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> load_genome(fp):</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Load the header and sequence data from a FASTA file"""</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> <span class="bu">open</span>(fp, <span class="st">"r"</span>) <span class="im">as</span> fh:</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>        header <span class="op">=</span> fh.readline().rstrip()</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>        seq <span class="op">=</span> <span class="st">""</span></span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> <span class="va">True</span>:</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>            line <span class="op">=</span> fh.readline()</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> line <span class="op">==</span> <span class="st">''</span>:</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>                <span class="cf">break</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>            seq <span class="op">+=</span> line.rstrip()</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> header, seq</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> load_fastq(fp):</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>    reads <span class="op">=</span> []</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>    <span class="cf">with</span> <span class="bu">open</span>(fp, <span class="st">"r"</span>) <span class="im">as</span> fh:</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>        <span class="cf">while</span> <span class="va">True</span>:</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>            header <span class="op">=</span> fh.readline().rstrip()</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>            <span class="cf">if</span> header <span class="op">==</span> <span class="st">""</span>:</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a>                <span class="cf">break</span></span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>            seq <span class="op">=</span> fh.readline().rstrip()</span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>            fh.readline()</span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>            quals <span class="op">=</span> fh.readline().rstrip()</span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>            reads.append((seq, quals))</span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> reads</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</details>
 </div>
-<p>Sequences of the most frequent 11-mers</p>
+<p>Load the genome sequence into memory, then do the same for the sequencing reads:</p>
+<div id="load-poliovirus-data" class="cell" data-execution_count="11">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>header, sequence <span class="op">=</span> load_genome(<span class="st">"data/ref.fasta"</span>)</span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(header)</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Genome length: </span><span class="sc">{</span><span class="bu">len</span>(sequence)<span class="sc">}</span><span class="ss">"</span>) </span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a>reads <span class="op">=</span> load_fastq(<span class="st">"data/reads.fastq"</span>)</span>
+<span id="cb13-6"><a href="#cb13-6" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Number of reads: </span><span class="sc">{</span><span class="bu">len</span>(reads)<span class="sc">}</span><span class="ss">"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>&gt;NC_002058.3 Poliovirus, complete genome
+Genome length: 7440
+Number of reads: 205</code></pre>
 </div>
 </div>
-</figure>
+<p>Generate the k-mer index and query each sequencing read:</p>
+<div id="poliovirus-index" class="cell" data-execution_count="12">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>start <span class="op">=</span> time.time()</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>poliovirus_index <span class="op">=</span> Index(genome<span class="op">=</span>sequence, k<span class="op">=</span><span class="dv">9</span>)</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>end <span class="op">=</span> time.time()</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"Poliovirus genome indexed in </span><span class="sc">{</span>end<span class="op">-</span>start<span class="sc">}</span><span class="ss"> microseconds"</span>)</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>matches <span class="op">=</span> <span class="dv">0</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> read <span class="kw">in</span> reads:</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>    hits <span class="op">=</span> poliovirus_index.query(read[<span class="dv">0</span>])</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>    <span class="cf">if</span> <span class="bu">len</span>(hits) <span class="op">&gt;</span> <span class="dv">0</span>:</span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>        matches <span class="op">+=</span> <span class="dv">1</span></span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="ss">f"</span><span class="sc">{</span>matches<span class="sc">}</span><span class="ss">/</span><span class="sc">{</span><span class="bu">len</span>(reads)<span class="sc">}</span><span class="ss"> reads mapped to the Poliovirus genome"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Poliovirus genome indexed in 0.005966901779174805 microseconds
+0/205 reads mapped to the Poliovirus genome</code></pre>
 </div>
 </div>
-<p>Notice that there is substantial overlap between the 2<sup>nd</sup> and 3<sup>rd</sup> 11-mers when we shift the 3<sup>rd</sup> 11-mer one position to the right. Do the same for the other 11-mers (except for the first one) until the <em>AAA</em> subregions align:</p>
-<pre><code>GGGACTGGAAA
- GGACTGGAAAC
-  GACTGGAAACG
-   ACTGGAAACGC</code></pre>
-<p>The <em>ACTGGAAA</em> 8-mer seems like a good candidate for the <em>ori</em> binding motif for <em>V. cholerae</em>.</p>
-</section>
-<section id="asymmetry-of-replication" class="level2">
-<h2 class="anchored" data-anchor-id="asymmetry-of-replication">Asymmetry of Replication</h2>
-<p>DNA consists of two complementary strands that run in opposite (antiparallel) directions. One runs in the <span class="math inline">\(5' \to 3'\)</span> (leading strand) direction while the other runs in the <span class="math inline">\(3' \to 5'\)</span> (lagging strand) direction. Since <strong>DNA polymerase</strong> can only add nucleotides in the <span class="math inline">\(5' \to 3'\)</span> direction, synthesis on the lagging strand is fragmented and discontinuous. This phenomenon leads to the formation of small gaps called <strong>Okazaki fragments</strong>.</p>
-<div id="fig-okazaki" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-okazaki-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="assets/okazaki.png" class="img-fluid figure-img" style="width:80.0%">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-okazaki-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;2: Okazaki fragments in a replicating DNA strand
-</figcaption>
-</figure>
-</div>
-<p>The transient single-stranded state of the lagging strand makes it unstable and more prone to mutation. It has been empirically confirmed that mutation rates are slightly higher for the lagging strand and this has been attributed to the spontaneous conversion of cytosine (C) to thymine (T), a phenomenon known as <strong>deamination</strong>.</p>
-<p>As we move along the genome, we will observe a change in relative GC content. The frequency of cytosine will decrease in the forward half-strand due to deamination and increase in the reverse half-strand (<a href="#fig-skew-diagram" class="quarto-xref">Figure&nbsp;3</a>).</p>
-<div id="fig-skew-diagram" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-skew-diagram-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="assets/skew_diagram.png" class="img-fluid figure-img">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-skew-diagram-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;3: Schematic representation of the GC skew
-</figcaption>
-</figure>
-</div>
-<p>We capture this information by keeping track of the running difference betwee the total counts of G and C. We then visualize the results in a <strong>skew diagram</strong>. Let’s plot the skew diagram for <em>V. cholerae</em></p>
-<div id="compute-genome-skew" class="cell" data-execution_count="7">
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span>
-<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">def</span> skew(genome: <span class="bu">str</span>) <span class="op">-&gt;</span> np.array:</span>
-<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>    <span class="co">"""Compute the GC skew of a sequence"""</span></span>
-<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>    L <span class="op">=</span> <span class="bu">len</span>(genome)</span>
-<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>    skew <span class="op">=</span> np.zeros(genome_length<span class="op">+</span><span class="dv">1</span>)</span>
-<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>    <span class="cf">for</span> pos, base <span class="kw">in</span> <span class="bu">enumerate</span>(genome, start<span class="op">=</span><span class="dv">1</span>):</span>
-<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>        <span class="cf">if</span> base <span class="op">==</span> <span class="st">"G"</span>:</span>
-<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>            skew[pos] <span class="op">=</span> skew[pos<span class="op">-</span><span class="dv">1</span>] <span class="op">+</span> <span class="dv">1</span></span>
-<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a>        <span class="cf">elif</span> base <span class="op">==</span> <span class="st">"C"</span>:</span>
-<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a>            skew[pos] <span class="op">=</span> skew[pos<span class="op">-</span><span class="dv">1</span>] <span class="op">-</span> <span class="dv">1</span></span>
-<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>        <span class="cf">else</span>:</span>
-<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>            skew[pos] <span class="op">=</span> skew[pos<span class="op">-</span><span class="dv">1</span>]</span>
-<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>    <span class="cf">return</span> skew</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<div id="cell-fig-genome-skew" class="cell" data-execution_count="8">
-<div class="cell-output cell-output-display">
-<div id="fig-genome-skew" class="quarto-float quarto-figure quarto-figure-center anchored">
-<figure class="quarto-float quarto-float-fig figure">
-<div aria-describedby="fig-genome-skew-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-<img src="index_files/figure-html/fig-genome-skew-output-1.png" class="img-fluid figure-img">
-</div>
-<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-genome-skew-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
-Figure&nbsp;4: Genome skew of <em>V. cholerae</em>
-</figcaption>
-</figure>
-</div>
-</div>
-</div>
-<p>As illustrated in <a href="#fig-skew-diagram" class="quarto-xref">Figure&nbsp;3</a>, the part of the graph where the skew transitions from decreasing to increasing is the <em>ori</em> (highlighted in green). The part where the skew goes from increasing to decreasing is the <em>ter</em> (highlighted in red), the region where replication stops or terminates.</p>
+<p>A whopping <strong>zero</strong> reads were matched against the genome index. This may be unexpected since the sequencing reads were derived from the Poliovirus genome. Why is this the case? This can be explained by the following reasons:</p>
+<p><strong>1. Matching Algorithm</strong></p>
+<p>The <code>.query</code> method on gives us a list of positions where the query string <strong>exactly matches</strong> a substring of the genome. A single mismatch at any position of the read will result in a negative hit. Given Illumina reads are ~150-200 bases in length, the possibility of a mismatch is quite high.</p>
+<p><strong>2. Sequencing Errors</strong></p>
+<p>A characteristic of Illumina reads is that the quality score at each position of the read tends to decrease along its length. This is due to the confidence of the base caller decreasing as more and more bases are added to a sequencing read.</p>
+<p><strong>3. Adapter Sequences</strong></p>
+<p>Adapters are artifical sequences appended to each DNA fragment to anchor the molecule to the base of the sequencing well. Since adapters do not naturally occur within genome of interest, including these sequences to our queries would always lead to mismatches.</p>
 
 
+</section>
 </section>
 
 </main> <!-- /main -->

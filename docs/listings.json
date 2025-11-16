@@ -2,6 +2,7 @@
   {
     "listing": "/index.html",
     "items": [
+      "/posts/genome-index/index.html",
       "/posts/string-matching/index.html",
       "/posts/gc-skew/index.html",
       "/posts/kmer-analysis/index.html",

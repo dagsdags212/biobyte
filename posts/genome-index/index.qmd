@@ -1,0 +1,274 @@
+---
+title: "Indexing Genomes"
+date: "2025-11-16"
+description: "Efficiently querying genomic sequences for patterns using a _K_-mer index"
+image: cover.png
+categories: [bioinformatics, data-structures]
+date-modified: "2025-11-16"
+jupyter: python3
+execute:
+    warning: false
+    message: false
+    cache: false
+---
+
+```{python}
+#| echo: false
+#| label: setup
+import polars as pl
+import time
+```
+
+Genome indexes are **pre-computed data structures** that allow extremely fast lookup, alignment, or querying of sequences
+against a reference genome. Instead of scanning the entire genome for every query, we create an index once, store it on disk,
+and reuse it for many operations. 
+
+
+
+## K-mer Index
+
+### Building the Index
+
+A simple implementation is the **k-mer** index that subdivides a reference genome into _k_-mers and stores the positions for each 
+occurrence of a particular _k_-mer. As an example, consider sequence the following sequence _G_:
+
+$$ G = \text{ATCGATCGA} $$
+
+We can build a *5*-mer index by first computing the _5_-mer composition of the sequence _G_:
+
+```{python}
+#| label: kmer-composition
+def composition(genome: str, k: int) -> list[str]:
+    """Extract all k-mers from a given genome sequence"""
+    kmers = []
+    for i in range(len(genome) - k + 1):
+        kmers.append(genome[i:i+k])
+    return kmers
+```
+
+```{python}
+#| label: compute-kmer-composition
+#| echo: false
+G = "ATCGATCGA"
+composition(G, 5)
+```
+
+We sort the _k_-mers by lexicographic order, then map the positions where the _k_-mer occurs within the genome.
+Sorting allows us to query the index in log-linear time using binary search. In Python, we can represent the index as a 
+dictionary:
+
+```{python}
+def build_index(genome: str, k: int):
+    """Builds a k-mer index for the given sequence"""
+    gidx = {}
+    for i in range(len(genome) - k + 1):
+        kmer = genome[i:i+k]
+        if kmer in gidx:
+            gidx[kmer].append(i)
+        else:
+            gidx[kmer] = [i]
+    
+    return {k:v for k, v in sorted(gidx.items())}
+```
+
+```{python}
+#| label: compute-kmer-index
+#| echo: false
+build_index(G, 5)
+```
+Notice that we only store the first position where each _k_-mer matches a substring of genome _G_. This is a memory-efficient
+way to represent the index.
+
+### Querying the Index
+
+Given query string $Q = \text{TCGATC}$, how would we know if the given query occurs as a substring of genome _G_?
+We use our pre-built index! Since our implementation uses a hashmap (or dictionary) containing keys of length _k_, 
+we can only search the index using _k_-length substrings of _Q_. As a consequence, less character comparisons are needed to 
+detect _potetential_ matches of _Q_ as a substring of _G_.
+
+
+```{python}
+# Build genome 5-mer index
+k = 5
+genome_index = build_index(genome=G, k=k)
+
+Q = "TCGATC"
+
+match = genome_index.get(Q[:k])
+if match != -1:
+    print(f"Match found at position(s) {match}")
+else:
+    print("No match found")
+```
+
+Notice that we only match the first _k_ characters of the query string against the index.
+If a mismatch were to occur in the 6^th^ position of the sequene, we would falsely report an exact match.
+To prevent this from happening, we would need to perform a **validation** step to verify that the
+remaining charcters for both _Q_ and _G_ match.
+
+```{python}
+#| label: query-validation
+Q = "TCGATC"
+
+def query(q: str, g: str, index: dict, k: int) -> list[int]:
+    """Search a query string against a pre-built k-mer index"""
+    hits = []
+    match = index.get(q[:k])
+    if match:
+        for m in match:
+            if q[k:] == g[m+k:m+len(q)]:
+                hits.append(m)
+
+    return hits
+
+query(Q, G, genome_index, k)
+```
+
+Let's check if our function works as expected by introducing a mismatch at the 6^th^ position. We expect the function
+to return an empty list.
+
+```{python}
+#| label: query-validation-mismatch
+Q = "TCGATG"
+query(Q, G, genome_index, k)
+```
+
+### _K_-mer Index Class
+
+The `build_index` function is a pre-requisite to using the `query` function. Since their is an order to how we call these
+subroutines, it would make sense to group these functionality into a single Python class. 
+
+```{python}
+#| label: kmer-index-class
+class Index(object):
+    def __init__(self, genome: str, k: int) -> None:
+        self.k = k
+        self.genome = genome
+        self.index = self._build(genome, k)
+
+    def _build(self, genome: str, k: int) -> dict:
+        """Generate a k-mer index from a genome sequence"""
+        index = {}
+        for i in range(len(genome) - k + 1):
+            kmer = genome[i:i+k]
+            if kmer in index:
+                index[kmer].append(i)
+            else:
+                index[kmer] = [i]
+
+        return {k: v for k, v in sorted(index.items())}
+
+    def query(self, query: str) -> list[int]:
+        """Return a list of positions where the query exactly 
+        matches a substring of the genome"""
+        hits = []
+        match = self.index.get(query[:self.k])
+        if match:
+            for m in match:
+                if query[self.k:] == self.genome[m+self.k : m + len(query)]:
+                    hits.append(m)
+
+        return hits
+```
+
+### Indexing the Poliovirus Genome
+
+As a practical example, I downloaded the reference genome of the Poliovirus from NCBI along with a subset of sequencing reads.
+Let's build a _9_-mer index, query the reads against the index, then summarize our results:
+
+:::{.column-margin}
+Genome accession: [NC_002058.3](https://www.ncbi.nlm.nih.gov/nuccore/NC_002058.3) \
+Read accession: [SRR27242477](https://trace.ncbi.nlm.nih.gov/Traces/?view=run_browser&acc=SRR27242477&display=metadata)
+:::
+
+```{mermaid}
+flowchart LR
+    fasta("FASTA")
+    fastq("FASTQ")
+    fasta-->|load| genome["Genome"] -->|build| index("Index")
+    fastq-->|load| reads["Reads"] -->|query| index
+    index -->|validate| hits["hits"]
+
+```
+
+```{python}
+#| label: helper-functions
+#| code-fold: true
+def load_genome(fp):
+    """Load the header and sequence data from a FASTA file"""
+    with open(fp, "r") as fh:
+        header = fh.readline().rstrip()
+        seq = ""
+        while True:
+            line = fh.readline()
+            if line == '':
+                break
+            seq += line.rstrip()
+
+    return header, seq
+
+def load_fastq(fp):
+    reads = []
+    with open(fp, "r") as fh:
+        while True:
+            header = fh.readline().rstrip()
+            if header == "":
+                break
+            seq = fh.readline().rstrip()
+            fh.readline()
+            quals = fh.readline().rstrip()
+            reads.append((seq, quals))
+
+    return reads
+            
+```
+
+Load the genome sequence into memory, then do the same for the sequencing reads:
+```{python}
+#| label: load-poliovirus-data
+header, sequence = load_genome("data/ref.fasta")
+print(header)
+print(f"Genome length: {len(sequence)}") 
+
+reads = load_fastq("data/reads.fastq")
+print(f"Number of reads: {len(reads)}")
+```
+
+Generate the k-mer index and query each sequencing read:
+```{python}
+#| label: poliovirus-index
+start = time.time()
+poliovirus_index = Index(genome=sequence, k=9)
+end = time.time()
+
+print(f"Poliovirus genome indexed in {end-start} microseconds")
+
+matches = 0
+for read in reads:
+    hits = poliovirus_index.query(read[0])
+    if len(hits) > 0:
+        matches += 1
+
+print(f"{matches}/{len(reads)} reads mapped to the Poliovirus genome")
+```
+
+A whopping **zero** reads were matched against the genome index. This may be unexpected since the sequencing reads
+were derived from the Poliovirus genome. Why is this the case? This can be explained by the following reasons:
+
+**1. Matching Algorithm**
+
+The `.query` method on gives us a list of positions where the query string **exactly matches** a substring of the genome.
+A single mismatch at any position of the read will result in a negative hit. Given Illumina reads are ~150-200 bases in length,
+the possibility of a mismatch is quite high.
+
+**2. Sequencing Errors**
+
+A characteristic of Illumina reads is that the quality score at each position of the read tends to decrease along its length.
+This is due to the confidence of the base caller decreasing as more and more bases are added to a sequencing read.
+
+**3. Adapter Sequences**
+
+Adapters are artifical sequences appended to each DNA fragment to anchor the molecule to the base of the sequencing well.
+Since adapters do not naturally occur within genome of interest, including these sequences to our queries would always lead to mismatches.
+
+
